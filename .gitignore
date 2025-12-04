@@ -46,3 +46,7 @@ yarn-error.log*
 # database
 *.db
 *.db-journal
+
+# node binaries
+.node_bin/
+node-v*.pkg
