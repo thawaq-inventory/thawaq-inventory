@@ -9,9 +9,9 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { amount, taxRate, taxAmount, totalAmount, description, expenseDate, photoUrl, notes, categoryId, customCategory, submittedById } = body;
 
-        if (!amount || !photoUrl || !submittedById) {
+        if (!amount || !submittedById) {
             return NextResponse.json(
-                { error: 'Amount, photoUrl, and submittedById are required' },
+                { error: 'Amount and submittedById are required' },
                 { status: 400 }
             );
         }
