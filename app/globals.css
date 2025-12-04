@@ -1,0 +1,390 @@
+@import "tailwindcss";
+
+:root {
+  /* Professional Minimalist Palette - Slate & White */
+  --background: #ffffff;
+  --foreground: #0f172a;
+  /* Slate-900 */
+
+  --primary: #0f172a;
+  /* Slate-900 */
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  /* Slate-100 */
+  --secondary-foreground: #0f172a;
+
+  --accent: #f8fafc;
+  /* Slate-50 */
+  --accent-foreground: #0f172a;
+
+  --muted: #f8fafc;
+  /* Slate-50 */
+  --muted-foreground: #64748b;
+  /* Slate-500 */
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --border: #e2e8f0;
+  /* Slate-200 */
+  --input: #e2e8f0;
+  --ring: #0f172a;
+
+  --radius: 0.5rem;
+  /* Smaller radius for professional look */
+
+  /* BOLD Modern Accounting Color Palette - Inspired by Al Thawaq Brand */
+  --color-primary-blue: #0ea5e9;
+  /* Sky-500 - Trust & Professionalism */
+  --color-primary-blue-dark: #0284c7;
+  /* Sky-600 */
+  --color-success-green: #10b981;
+  /* Emerald-500 - Positive actions */
+  --color-success-green-dark: #059669;
+  /* Emerald-600 */
+  --color-warning-amber: #f59e0b;
+  /* Amber-500 - Alerts */
+  --color-warning-amber-dark: #d97706;
+  /* Amber-600 */
+  --color-danger-red: #ef4444;
+  /* Red-500 - Errors */
+  --color-danger-red-dark: #dc2626;
+  /* Red-600 */
+
+  /* Brand Colors from Logo */
+  --color-brand-gold: #c9a961;
+  /* From logo */
+  --color-brand-burgundy: #6b1f1f;
+  /* From logo */
+
+  /* Lighter variants for backgrounds */
+  --color-primary-blue-light: #e0f2fe;
+  /* Sky-100 */
+  --color-success-green-light: #d1fae5;
+  /* Emerald-100 */
+  --color-warning-amber-light: #fef3c7;
+  /* Amber-100 */
+  --color-danger-red-light: #fee2e2;
+  /* Red-100 */
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-brand: linear-gradient(135deg, #c9a961 0%, #6b1f1f 100%);
+  --gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Subtle animations only */
+  --animate-fade-in: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+body {
+  background-color: #f8fafc;
+  /* Subtle Slate-50 background for the app */
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  /* Removed background patterns/gradients for cleanliness */
+}
+
+/* Minimalist Utilities */
+.dashboard-card {
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  /* Softer shadow */
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.dashboard-card:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -1px rgb(0 0 0 / 0.05);
+}
+
+.glass-card {
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Typography refinements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.025em;
+  /* Tight tracking for headings */
+}
+
+/* Custom Scrollbar for Sidebar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+input,
+select {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Subtle animation for cards */
+.dashboard-card {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Colored Accent Utilities */
+.card-accent-blue {
+  border-left: 4px solid var(--color-primary-blue);
+}
+
+.card-accent-green {
+  border-left: 4px solid var(--color-success-green);
+}
+
+.card-accent-amber {
+  border-left: 4px solid var(--color-warning-amber);
+}
+
+.card-accent-red {
+  border-left: 4px solid var(--color-danger-red);
+}
+
+/* Status Badge Styles */
+.status-balanced {
+  background-color: var(--color-success-green-light);
+  color: #065f46;
+  /* Emerald-800 */
+  border: 1px solid var(--color-success-green);
+}
+
+.status-unbalanced {
+  background-color: var(--color-danger-red-light);
+  color: #991b1b;
+  /* Red-800 */
+  border: 1px solid var(--color-danger-red);
+}
+
+.status-pending {
+  background-color: var(--color-warning-amber-light);
+  color: #92400e;
+  /* Amber-800 */
+  border: 1px solid var(--color-warning-amber);
+}
+
+/* Button Color Variants */
+.btn-primary-blue {
+  background-color: var(--color-primary-blue);
+  color: white;
+}
+
+.btn-primary-blue:hover {
+  background-color: #0284c7;
+  /* Sky-600 */
+}
+
+.btn-success-green {
+  background-color: var(--color-success-green);
+  color: white;
+}
+
+.btn-success-green:hover {
+  background-color: #059669;
+  /* Emerald-600 */
+}
+
+/* BOLD Enhanced Card Styles */
+.card-gradient-blue {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.3);
+}
+
+.card-gradient-green {
+  background: var(--gradient-success);
+  color: white;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
+}
+
+.card-gradient-brand {
+  background: var(--gradient-brand);
+  color: white;
+  box-shadow: 0 10px 25px -5px rgba(201, 169, 97, 0.3);
+}
+
+.card-gradient-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.3);
+}
+
+.card-gradient-orange {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.3);
+}
+
+
+/* Enhanced Metric Cards with Hover Effects */
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+.metric-card:hover::before {
+  opacity: 1;
+}
+
+/* Animated Number Display */
+.animated-number {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.metric-card:hover .animated-number {
+  transform: scale(1.05);
+}
+
+/* Vibrant Status Badges with Glow */
+.status-balanced {
+  background: var(--gradient-success);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.status-unbalanced {
+  background: var(--gradient-warm);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Enhanced Sidebar Active State */
+.nav-link-active {
+  background: var(--gradient-primary);
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+/* Pulse Animation for Important Elements */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(14, 165, 233, 0);
+  }
+}
+
+.pulse-on-hover:hover {
+  animation: pulse-glow 1.5s infinite;
+}
+
+/* Shimmer Effect for Loading States */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}

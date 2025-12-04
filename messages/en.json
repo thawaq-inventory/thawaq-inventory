@@ -1,0 +1,111 @@
+{
+    "Admin": {
+        "title": "Admin Dashboard",
+        "dashboard": "Dashboard",
+        "accounting": "Accounting",
+        "journalEntries": "Journal Entries",
+        "invoices": "Invoices",
+        "plReports": "P&L Reports",
+        "chartOfAccounts": "Chart of Accounts",
+        "vendors": "Vendors",
+        "inventory": "Inventory",
+        "analytics": "Analytics",
+        "products": "Products",
+        "history": "History",
+        "reports": "Reports",
+        "settings": "Settings",
+        "adminUser": "Admin User",
+        "adminEmail": "admin@thawaq.com",
+        "signOut": "Sign Out",
+        "addItem": "Add Item",
+        "export": "Export CSV",
+        "import": "Import CSV",
+        "table": {
+            "name": "Name",
+            "sku": "SKU",
+            "stock": "Stock",
+            "cost": "Cost",
+            "price": "Price",
+            "actions": "Actions"
+        }
+    },
+    "Employee": {
+        "title": "Stock Count",
+        "save": "Save",
+        "search": "Search items...",
+        "chooseTask": "Choose Task",
+        "selectTaskDesc": "Select the task you want to perform",
+        "tapToContinue": "Tap to continue →",
+        "receiveStock": "Receive Stock",
+        "receiveStockDesc": "Add incoming inventory",
+        "stockCount": "Stock Count",
+        "stockCountDesc": "Audit inventory levels",
+        "receiving": {
+            "title": "Receive Stock",
+            "recentAdditions": "Recent Additions",
+            "quickAdd": "Quick Add",
+            "custom": "Custom",
+            "added": "Added"
+        },
+        "count": {
+            "title": "Stock Count",
+            "progress": "Progress",
+            "counted": "counted",
+            "current": "Current",
+            "setExact": "Set Exact",
+            "markCounted": "Mark as Counted",
+            "saveAll": "Save All Changes"
+        },
+        "scanItem": "Scan Item",
+        "scanItemDesc": "Scan barcode or QR code",
+        "backToDashboard": "Back to Dashboard",
+        "lastScanned": "Last Scanned",
+        "processItem": "Process Item"
+    },
+    "Common": {
+        "loading": "Loading...",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search...",
+        "confirm": "Confirm",
+        "close": "Close"
+    },
+    "Product": {
+        "addProduct": "Add Product",
+        "editProduct": "Edit Product",
+        "deleteConfirm": "Are you sure you want to delete this product?",
+        "name": "Product Name",
+        "sku": "SKU",
+        "description": "Description",
+        "stockLevel": "Stock Level",
+        "unit": "Unit",
+        "minStock": "Minimum Stock",
+        "cost": "Cost",
+        "price": "Price",
+        "units": {
+            "kg": "Kilogram (kg)",
+            "g": "Gram (g)",
+            "L": "Liter (L)",
+            "ml": "Milliliter (ml)",
+            "pcs": "Pieces",
+            "box": "Box",
+            "pack": "Pack"
+        }
+    },
+    "Inventory": {
+        "updateStock": "Update Stock",
+        "reason": "Reason",
+        "reasons": {
+            "RESTOCK": "Restock",
+            "SALE": "Sale",
+            "WASTE": "Waste",
+            "ADJUSTMENT": "Adjustment",
+            "RETURN": "Return"
+        },
+        "lowStock": "Low Stock",
+        "outOfStock": "Out of Stock"
+    }
+}

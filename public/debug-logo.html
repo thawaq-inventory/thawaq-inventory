@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            background: #f0f0f0;
+            padding: 20px;
+            font-family: sans-serif;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+
+        img {
+            border: 1px solid red;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Logo Inspection</h1>
+    <div class="container" style="flex-wrap: wrap;">
+        <div class="box">
+            <h2>Current (logo-v4.png)</h2>
+            <img src="/logo-v4.png" height="100" style="object-fit: contain; background: #eee;" />
+        </div>
+        <div class="box">
+            <h2>New Source (logo-new-source.png)</h2>
+            <img src="/logo-new-source.png" height="100" style="object-fit: contain; background: #eee;" />
+        </div>
+        <div class="box">
+            <h2>V3 (logo-v3.png)</h2>
+            <img src="/logo-v3.png" height="100" style="object-fit: contain; background: #eee;" />
+        </div>
+        <div class="box">
+            <h2>Backup (logo-backup.png)</h2>
+            <img src="/logo-backup.png" height="100" style="object-fit: contain; background: #eee;" />
+        </div>
+    </div>
+</body>
+
+</html>

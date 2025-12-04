@@ -1,0 +1,353 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Plus, X, Save, BookOpen, AlertCircle } from "lucide-react";
+import { useRouter } from 'next/navigation';
+
+interface Account {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+}
+
+interface JournalLine {
+    accountId: string;
+    debit: string;
+    credit: string;
+}
+
+export default function JournalEntryPage() {
+    const router = useRouter();
+    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [description, setDescription] = useState('');
+    const [reference, setReference] = useState('');
+    const [lines, setLines] = useState<JournalLine[]>([
+        { accountId: '', debit: '0', credit: '0' },
+        { accountId: '', debit: '0', credit: '0' }
+    ]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        fetchAccounts();
+    }, []);
+
+    const fetchAccounts = async () => {
+        const response = await fetch('/api/accounting/accounts');
+        const data = await response.json();
+        setAccounts(data);
+    };
+
+    const addLine = () => {
+        setLines([...lines, { accountId: '', debit: '0', credit: '0' }]);
+    };
+
+    const removeLine = (index: number) => {
+        if (lines.length <= 2) {
+            alert('You must have at least 2 lines in a journal entry');
+            return;
+        }
+        setLines(lines.filter((_, i) => i !== index));
+    };
+
+    const handleLineChange = (index: number, type: 'debit' | 'credit', value: string) => {
+        const newLines = [...lines];
+        const line = { ...newLines[index] };
+
+        line[type] = value;
+
+        // If entering a value > 0, zero out the other side
+        if (value && parseFloat(value) > 0) {
+            const otherType = type === 'debit' ? 'credit' : 'debit';
+            line[otherType] = '0';
+        }
+
+        newLines[index] = line;
+        setLines(newLines);
+    };
+
+    const calculateTotals = () => {
+        const totalDebits = lines.reduce((sum, line) => sum + parseFloat(line.debit || '0'), 0);
+        const totalCredits = lines.reduce((sum, line) => sum + parseFloat(line.credit || '0'), 0);
+        const difference = totalDebits - totalCredits;
+        return { totalDebits, totalCredits, difference, balanced: Math.abs(difference) < 0.01 };
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const { balanced, difference } = calculateTotals();
+
+        if (!balanced) {
+            alert(`Entry is not balanced! Difference: ${Math.abs(difference).toFixed(2)} JOD`);
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await fetch('/api/accounting/journal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date,
+                    description,
+                    reference,
+                    lines: lines.map(line => ({
+                        accountId: line.accountId,
+                        debit: parseFloat(line.debit),
+                        credit: parseFloat(line.credit)
+                    }))
+                }),
+            });
+
+            if (response.ok) {
+                alert('Journal entry recorded successfully!');
+                // Reset form
+                setDescription('');
+                setReference('');
+                setLines([
+                    { accountId: '', debit: '0', credit: '0' },
+                    { accountId: '', debit: '0', credit: '0' }
+                ]);
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to create journal entry');
+            }
+        } catch (error) {
+            console.error('Failed to create journal entry:', error);
+            alert('Failed to record journal entry');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const { totalDebits, totalCredits, difference, balanced } = calculateTotals();
+    const getAccountLabel = (accountId: string) => {
+        const account = accounts.find(a => a.id === accountId);
+        return account ? `${account.code} - ${account.name}` : '';
+    };
+
+    return (
+        <div className="max-w-5xl mx-auto space-y-6">
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">New Journal Entry</h1>
+                <p className="text-slate-500 mt-1">Record manual accounting transactions</p>
+            </div>
+
+            {accounts.length === 0 && (
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="flex items-center gap-3 pt-6">
+                        <AlertCircle className="w-5 h-5 text-amber-600" />
+                        <div>
+                            <p className="font-medium text-amber-900">No accounts found</p>
+                            <p className="text-sm text-amber-700">
+                                You need to create accounts in the Chart of Accounts before recording journal entries.
+                            </p>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push('/admin/accounting/accounts')}
+                            className="ml-auto"
+                        >
+                            Go to Accounts
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Entry Details</CardTitle>
+                        <CardDescription>Basic information about this journal entry</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label>Date *</Label>
+                                <Input
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Reference</Label>
+                                <Input
+                                    value={reference}
+                                    onChange={(e) => setReference(e.target.value)}
+                                    placeholder="INV-001, etc."
+                                />
+                            </div>
+
+                            <div className="space-y-2 col-span-1">
+                                <Label>Status</Label>
+                                <div className={`px-3 py-2 rounded-md text-sm font-medium ${balanced ? 'status-balanced' : 'status-unbalanced'
+                                    }`}>
+                                    {balanced ? '✓ Balanced' : '✗ Not Balanced'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Description *</Label>
+                            <Input
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Description of this transaction"
+                                required
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Journal Lines</CardTitle>
+                                <CardDescription>Add debit and credit entries (must balance)</CardDescription>
+                            </div>
+                            <Button type="button" variant="outline" size="sm" onClick={addLine}>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Line
+                            </Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="w-16">#</TableHead>
+                                    <TableHead>Account</TableHead>
+                                    <TableHead className="w-40">Debit</TableHead>
+                                    <TableHead className="w-40">Credit</TableHead>
+                                    <TableHead className="w-16"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {lines.map((line, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell className="text-slate-500 font-medium">
+                                            {index + 1}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select
+                                                value={line.accountId}
+                                                onValueChange={(value) => {
+                                                    const newLines = [...lines];
+                                                    newLines[index] = { ...newLines[index], accountId: value };
+                                                    setLines(newLines);
+                                                }}
+                                                required
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select account" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {accounts.map(account => (
+                                                        <SelectItem key={account.id} value={account.id}>
+                                                            {account.code} - {account.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={line.debit}
+                                                onChange={(e) => handleLineChange(index, 'debit', e.target.value)}
+                                                className="font-mono"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={line.credit}
+                                                onChange={(e) => handleLineChange(index, 'credit', e.target.value)}
+                                                className="font-mono"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            {lines.length > 2 && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => removeLine(index)}
+                                                    className="h-8 w-8 text-red-500 hover:bg-red-50"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+
+                                <TableRow className="bg-slate-50 font-semibold">
+                                    <TableCell colSpan={2} className="text-right">
+                                        Totals:
+                                    </TableCell>
+                                    <TableCell className={`font-mono ${totalDebits > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-500'}`}>
+                                        {totalDebits.toFixed(2)} JOD
+                                    </TableCell>
+                                    <TableCell className={`font-mono ${totalCredits > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-500'}`}>
+                                        {totalCredits.toFixed(2)} JOD
+                                    </TableCell>
+                                    <TableCell></TableCell>
+                                </TableRow>
+
+                                {!balanced && (
+                                    <TableRow className="bg-red-50">
+                                        <TableCell colSpan={2} className="text-right text-red-700 font-medium">
+                                            Difference:
+                                        </TableCell>
+                                        <TableCell colSpan={3} className="font-mono text-red-700 font-bold">
+                                            {Math.abs(difference).toFixed(2)} JOD {difference > 0 ? '(excess debit)' : '(excess credit)'}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+
+                        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <h4 className="text-sm font-medium text-blue-900 mb-2">Double-Entry Accounting</h4>
+                            <p className="text-xs text-blue-700">
+                                Every transaction must have equal debits and credits. Each line should have either a debit OR credit value (not both).
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-end gap-3">
+                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={loading || !balanced || accounts.length === 0}
+                        className="btn-success-green"
+                    >
+                        <Save className="w-4 h-4 mr-2" />
+                        {loading ? 'Saving...' : 'Save Entry'}
+                    </Button>
+                </div>
+            </form>
+        </div>
+    );
+}
