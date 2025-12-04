@@ -68,29 +68,28 @@ export default function EmployeeExpensesPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!photoFile) {
-            alert(t('expenses.uploadRequired'));
-            return;
-        }
-
         setLoading(true);
         setSuccess(false);
 
         try {
-            // Upload photo first
-            const formData = new FormData();
-            formData.append('file', photoFile);
+            // Upload photo if provided
+            let photoUrl = null;
 
-            const uploadRes = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            if (photoFile) {
+                const formData = new FormData();
+                formData.append('file', photoFile);
 
-            if (!uploadRes.ok) {
-                throw new Error('Failed to upload photo');
+                const uploadRes = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (uploadRes.ok) {
+                    const data = await uploadRes.json();
+                    photoUrl = data.url;
+                }
+                // If upload fails, continue without photo
             }
-
-            const { url: photoUrl } = await uploadRes.json();
 
             // Get current user (for demo, using hardcoded - you should get from session)
             const userId = '1'; // TODO: Get from auth session
@@ -300,7 +299,7 @@ export default function EmployeeExpensesPage() {
 
                             {/* Photo Upload */}
                             <div>
-                                <Label>{t('expenses.receiptPhoto')} *</Label>
+                                <Label>{t('expenses.receiptPhoto')} (Optional)</Label>
                                 <div className="mt-2">
                                     {photoPreview ? (
                                         <div className="relative">
@@ -336,7 +335,6 @@ export default function EmployeeExpensesPage() {
                                                 accept="image/*"
                                                 onChange={handlePhotoChange}
                                                 className="hidden"
-                                                required
                                             />
                                         </label>
                                     )}
