@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { employeeId, pinCode } = body;
 
+        console.log('Login attempt:', { employeeId, pinCode });
+
         if (!employeeId || !pinCode) {
             return NextResponse.json(
                 { error: 'Employee ID and PIN are required' },
@@ -27,6 +29,8 @@ export async function POST(request: NextRequest) {
                 isActive: true,
             },
         });
+
+        console.log('Employee found:', employee ? { id: employee.id, name: employee.name, hasPIN: !!employee.pinCode } : 'NOT FOUND');
 
         if (!employee) {
             return NextResponse.json(
@@ -49,13 +53,29 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Check PIN
-        if (employee.pinCode !== pinCode) {
+        // Check if PIN is set
+        if (!employee.pinCode) {
+            console.error('Employee has no PIN set');
+            return NextResponse.json(
+                { error: 'No PIN set for this employee. Please contact admin.' },
+                { status: 401 }
+            );
+        }
+
+        // Check PIN - convert both to strings for comparison
+        const employeePIN = String(employee.pinCode);
+        const providedPIN = String(pinCode);
+
+        console.log('PIN comparison:', { employeePIN, providedPIN, match: employeePIN === providedPIN });
+
+        if (employeePIN !== providedPIN) {
             return NextResponse.json(
                 { error: 'Invalid PIN' },
                 { status: 401 }
             );
         }
+
+        console.log('Login successful for:', employee.name);
 
         // Return employee session data
         return NextResponse.json({
