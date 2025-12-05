@@ -106,7 +106,8 @@
         "search": "Search...",
         "confirm": "Confirm",
         "close": "Close",
-        "saveFailed": "Failed to save. Please try again."
+        "saveFailed": "Failed to save. Please try again.",
+        "switchLanguage": "Switch Language"
     },
     "Product": {
         "addProduct": "Add Product",
