@@ -60,7 +60,41 @@
         "scanItemDesc": "Scan barcode or QR code",
         "backToDashboard": "Back to Dashboard",
         "lastScanned": "Last Scanned",
-        "processItem": "Process Item"
+        "processItem": "Process Item",
+        "expenses": {
+            "title": "Submit Expense",
+            "subtitle": "Upload receipts and submit claims",
+            "expenseDetails": "Expense Details",
+            "fillRequired": "Fill in the required fields",
+            "amount": "Amount",
+            "taxRate": "Tax Rate",
+            "noTax": "No Tax",
+            "customTax": "Custom Tax Rate",
+            "customTaxRate": "Custom Tax %",
+            "enterRate": "Enter tax rate",
+            "baseAmount": "Base Amount",
+            "tax": "Tax",
+            "totalAmount": "Total Amount",
+            "category": "Category",
+            "selectCategory": "Select a category...",
+            "other": "Other",
+            "specifyCategory": "Specify Category",
+            "enterCategory": "Enter category name",
+            "expenseDate": "Expense Date",
+            "description": "Description (Optional)",
+            "descriptionPlaceholder": "e.g., Client dinner",
+            "receiptPhoto": "Receipt Photo",
+            "uploadRequired": "A receipt photo is required",
+            "clickUpload": "Click to upload",
+            "fileTypes": "JPG, PNG (Max 10MB)",
+            "changePhoto": "Change Photo",
+            "notes": "Additional Notes (Optional)",
+            "notesPlaceholder": "Any additional details...",
+            "submitExpense": "Submit Expense",
+            "submitting": "Submitting...",
+            "submitted": "Expense Submitted!",
+            "pendingApproval": "Your expense is pending admin approval"
+        }
     },
     "Common": {
         "loading": "Loading...",
@@ -71,7 +105,8 @@
         "add": "Add",
         "search": "Search...",
         "confirm": "Confirm",
-        "close": "Close"
+        "close": "Close",
+        "saveFailed": "Failed to save. Please try again."
     },
     "Product": {
         "addProduct": "Add Product",
