@@ -27,7 +27,6 @@ export default function EmployeesPage() {
     const [formData, setFormData] = useState({
         name: '',
         username: '',
-        password: '',
         pinCode: '',
     });
 
@@ -47,7 +46,7 @@ export default function EmployeesPage() {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', username: '', password: '', pinCode: '' });
+        setFormData({ name: '', username: '', pinCode: '' });
         setShowForm(false);
         setEditingId(null);
         setError('');
@@ -66,14 +65,8 @@ export default function EmployeesPage() {
             return;
         }
 
-        if (!editingId && !formData.password) {
-            setError('Password is required for new employees');
-            setLoading(false);
-            return;
-        }
-
-        if (formData.pinCode && !/^\d{4}$/.test(formData.pinCode)) {
-            setError('PIN must be exactly 4 digits');
+        if (!formData.pinCode || !/^\d{4}$/.test(formData.pinCode)) {
+            setError('A 4-digit PIN is required for employee login');
             setLoading(false);
             return;
         }
@@ -98,10 +91,9 @@ export default function EmployeesPage() {
                 name: formData.name,
                 username: formData.username,
                 role: 'employee',
+                pinCode: formData.pinCode,
+                password: 'temp123', // Temporary password (not used by employees)
             };
-
-            if (formData.password) payload.password = formData.password;
-            if (formData.pinCode) payload.pinCode = formData.pinCode;
 
             const res = await fetch(url, {
                 method,
@@ -134,7 +126,6 @@ export default function EmployeesPage() {
         setFormData({
             name: employee.name,
             username: employee.username,
-            password: '',
             pinCode: employee.pinCode || '',
         });
         setShowForm(true);
@@ -221,34 +212,20 @@ export default function EmployeesPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="password">
-                                        Password {editingId ? '(leave blank to keep current)' : '*'}
-                                    </Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        required={!editingId}
-                                        placeholder="••••••"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="pinCode">4-Digit PIN (Optional)</Label>
-                                    <Input
-                                        id="pinCode"
-                                        type="text"
-                                        value={formData.pinCode}
-                                        onChange={(e) => {
-                                            const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                                            setFormData({ ...formData, pinCode: value });
-                                        }}
-                                        placeholder="1234"
-                                        maxLength={4}
-                                    />
-                                </div>
+                            <div>
+                                <Label htmlFor="pinCode">4-Digit PIN * (Required for mobile app login)</Label>
+                                <Input
+                                    id="pinCode"
+                                    type="text"
+                                    value={formData.pinCode}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        setFormData({ ...formData, pinCode: value });
+                                    }}
+                                    placeholder="1234"
+                                    maxLength={4}
+                                    required
+                                />
                             </div>
 
                             <div className="flex gap-2">
