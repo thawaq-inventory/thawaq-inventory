@@ -110,7 +110,8 @@
         "success": "تم بنجاح",
         "error": "حدث خطأ",
         "saveSuccess": "تم الحفظ بنجاح!",
-        "saveFailed": "فشل الحفظ"
+        "saveFailed": "فشل الحفظ",
+        "switchLanguage": "تغيير اللغة"
     },
     "Product": {
         "addProduct": "إضافة منتج",
