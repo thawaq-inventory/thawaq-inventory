@@ -154,8 +154,8 @@ export function AdminLayoutClient({
                             </h3>
                         </div>
 
-                        <NavLink href="/admin/employees/pins" icon={Users}>
-                            PIN Management
+                        <NavLink href="/admin/employees" icon={Users}>
+                            Manage Employees
                         </NavLink>
                     </div>
 

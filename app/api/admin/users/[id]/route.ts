@@ -45,15 +45,31 @@ export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    return updateUser(request, params);
+}
+
+// PATCH /api/admin/users/[id] - Partial update user (including PIN)
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    return updateUser(request, params);
+}
+
+async function updateUser(
+    request: NextRequest,
+    params: Promise<{ id: string }>
+) {
     try {
         const { id } = await params;
-        const { name, password, role, isActive } = await request.json();
+        const { name, password, role, isActive, pinCode } = await request.json();
 
         const updateData: any = {};
 
         if (name) updateData.name = name;
         if (role) updateData.role = role;
         if (isActive !== undefined) updateData.isActive = isActive;
+        if (pinCode !== undefined) updateData.pinCode = pinCode; // Add PIN support
 
         // Hash new password if provided
         if (password) {
@@ -75,6 +91,7 @@ export async function PUT(
                 username: true,
                 role: true,
                 isActive: true,
+                pinCode: true,
                 createdAt: true
             }
         });
