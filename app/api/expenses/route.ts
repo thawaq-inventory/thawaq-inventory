@@ -47,12 +47,6 @@ export async function POST(request: NextRequest) {
                 debitAccountId,
                 creditAccountId,
             },
-            include: {
-                category: true,
-                submittedBy: true,
-                debitAccount: true,
-                creditAccount: true,
-            }
         });
 
         return NextResponse.json(expense, { status: 201 });
