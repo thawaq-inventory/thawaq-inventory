@@ -342,7 +342,7 @@ model Expense {
   totalAmount       Float            @default(0) // Amount + taxAmount
   description       String?
   expenseDate       DateTime         @default(now())
-  photoUrl          String           // Required receipt photo
+  photoUrl          String?          // Optional receipt photo
   notes             String?
   
   categoryId        String?
