@@ -78,6 +78,18 @@ export default function EmployeesPage() {
             return;
         }
 
+        // Check for duplicate PIN
+        if (formData.pinCode) {
+            const duplicatePinEmployee = employees.find(
+                emp => emp.pinCode === formData.pinCode && emp.id !== editingId
+            );
+            if (duplicatePinEmployee) {
+                setError(`PIN ${formData.pinCode} is already used by ${duplicatePinEmployee.name}. Please choose a different PIN.`);
+                setLoading(false);
+                return;
+            }
+        }
+
         try {
             const url = editingId ? `/api/admin/users/${editingId}` : '/api/admin/users';
             const method = editingId ? 'PUT' : 'POST';
@@ -99,6 +111,10 @@ export default function EmployeesPage() {
 
             if (!res.ok) {
                 const data = await res.json();
+                // Handle specific error cases
+                if (data.error?.includes('pinCode') || data.error?.includes('Unique constraint')) {
+                    throw new Error('This PIN is already in use by another employee. Please choose a different PIN.');
+                }
                 throw new Error(data.error || 'Failed to save employee');
             }
 
