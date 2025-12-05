@@ -16,6 +16,20 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Verify the user exists before creating expense
+        const user = await prisma.user.findUnique({
+            where: { id: submittedById },
+            select: { id: true }
+        });
+
+        if (!user) {
+            console.error('User not found:', submittedById);
+            return NextResponse.json(
+                { error: 'Employee not found. Please log in again.' },
+                { status: 404 }
+            );
+        }
+
         // Get category default accounts if category is selected
         let debitAccountId = null;
         let creditAccountId = null;
