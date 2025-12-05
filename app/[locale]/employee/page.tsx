@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, ClipboardList, Scan, ArrowRight, Receipt } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
@@ -12,6 +13,14 @@ import { Link } from "@/i18n/routing";
 export default function EmployeeLanding() {
     const t = useTranslations('Employee');
     const router = useRouter();
+
+    // Check authentication
+    useEffect(() => {
+        const session = localStorage.getItem('employeeSession');
+        if (!session) {
+            router.push('/employee/login');
+        }
+    }, [router]);
 
     const tasks = [
         {

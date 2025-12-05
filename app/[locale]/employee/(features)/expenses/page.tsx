@@ -91,8 +91,17 @@ export default function EmployeeExpensesPage() {
                 // If upload fails, continue without photo
             }
 
-            // Get current user (for demo, using hardcoded - you should get from session)
-            const userId = '1'; // TODO: Get from auth session
+            // Get current user from session
+            let userId = '1'; // Fallback
+            try {
+                const sessionData = localStorage.getItem('employeeSession');
+                if (sessionData) {
+                    const session = JSON.parse(sessionData);
+                    userId = session.id;
+                }
+            } catch (error) {
+                console.error('Error reading session:', error);
+            }
 
             // Submit expense
             const expenseRes = await fetch('/api/expenses', {
