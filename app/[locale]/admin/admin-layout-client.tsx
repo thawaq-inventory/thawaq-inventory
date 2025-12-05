@@ -146,6 +146,19 @@ export function AdminLayoutClient({
                         </NavLink>
                     </div>
 
+                    {/* Employees Section */}
+                    <div className="pt-4 pb-2">
+                        <div className="px-3 mb-2">
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                Employees
+                            </h3>
+                        </div>
+
+                        <NavLink href="/admin/employees/pins" icon={Users}>
+                            PIN Management
+                        </NavLink>
+                    </div>
+
                     {/* Inventory Section (Collapsible) */}
                     <div className="pt-4">
                         <div className="px-3 mb-2">
