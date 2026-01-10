@@ -101,6 +101,11 @@ export default function AdminExpensesPage() {
 
         setProcessing(true);
         try {
+            // Get current user ID
+            const meRes = await fetch('/api/auth/me');
+            const meData = await meRes.json();
+            const userId = meData.id;
+
             // Update expense first if edited
             if (
                 editAmount !== selectedExpense.amount ||
@@ -121,7 +126,6 @@ export default function AdminExpensesPage() {
             }
 
             // Approve and create journal entry
-            const userId = '1'; // TODO: Get from auth session
             await fetch(`/api/expenses/${selectedExpense.id}/approve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -147,7 +151,11 @@ export default function AdminExpensesPage() {
 
         setProcessing(true);
         try {
-            const userId = '1'; // TODO: Get from auth session
+            // Get current user ID
+            const meRes = await fetch('/api/auth/me');
+            const meData = await meRes.json();
+            const userId = meData.id;
+
             await fetch(`/api/expenses/${selectedExpense.id}/reject`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

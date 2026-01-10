@@ -13,10 +13,19 @@ interface Employee {
     username: string;
     pinCode: string | null;
     isActive: boolean;
+    cliqAlias: string | null;
+    hourlyRate: number | null;
+}
+
+interface Branch {
+    id: string;
+    name: string;
+    code: string;
 }
 
 export default function EmployeesPage() {
     const [employees, setEmployees] = useState<Employee[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -28,11 +37,25 @@ export default function EmployeesPage() {
         name: '',
         username: '',
         pinCode: '',
+        cliqAlias: '',
+        hourlyRate: '5',
+        branchIds: [] as string[],
     });
 
     useEffect(() => {
         fetchEmployees();
+        fetchBranches();
     }, []);
+
+    const fetchBranches = async () => {
+        try {
+            const res = await fetch('/api/admin/branches');
+            const data = await res.json();
+            setBranches(data);
+        } catch (error) {
+            console.error('Error fetching branches:', error);
+        }
+    };
 
     const fetchEmployees = async () => {
         try {
@@ -46,7 +69,7 @@ export default function EmployeesPage() {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', username: '', pinCode: '' });
+        setFormData({ name: '', username: '', pinCode: '', cliqAlias: '', hourlyRate: '5', branchIds: [] });
         setShowForm(false);
         setEditingId(null);
         setError('');
@@ -93,6 +116,9 @@ export default function EmployeesPage() {
                 role: 'employee',
                 pinCode: formData.pinCode,
                 password: 'temp123', // Temporary password (not used by employees)
+                cliqAlias: formData.cliqAlias || null,
+                hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : 5.0,
+                branchIds: formData.branchIds,
             };
 
             const res = await fetch(url, {
@@ -121,12 +147,15 @@ export default function EmployeesPage() {
         }
     };
 
-    const handleEdit = (employee: Employee) => {
+    const handleEdit = (employee: any) => {
         setEditingId(employee.id);
         setFormData({
             name: employee.name,
             username: employee.username,
             pinCode: employee.pinCode || '',
+            cliqAlias: employee.cliqAlias || '',
+            hourlyRate: employee.hourlyRate?.toString() || '5',
+            branchIds: employee.userBranches?.map((ub: any) => ub.branchId) || [],
         });
         setShowForm(true);
     };
@@ -228,6 +257,72 @@ export default function EmployeesPage() {
                                 />
                             </div>
 
+                            {/* Branch Assignment */}
+                            <div>
+                                <Label htmlFor="branches">Assign to Branches *</Label>
+                                <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-3">
+                                    {branches.map((branch) => (
+                                        <label
+                                            key={branch.id}
+                                            className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.branchIds.includes(branch.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setFormData({
+                                                            ...formData,
+                                                            branchIds: [...formData.branchIds, branch.id]
+                                                        });
+                                                    } else {
+                                                        setFormData({
+                                                            ...formData,
+                                                            branchIds: formData.branchIds.filter(id => id !== branch.id)
+                                                        });
+                                                    }
+                                                }}
+                                                className="w-4 h-4"
+                                            />
+                                            <span className="text-sm">{branch.name} ({branch.code})</span>
+                                        </label>
+                                    ))}
+                                    {branches.length === 0 && (
+                                        <p className="text-sm text-gray-500 text-center py-2">No branches available</p>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Select all branches this employee works at
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="cliqAlias">CliQ Alias (Mobile/Email)</Label>
+                                    <Input
+                                        id="cliqAlias"
+                                        value={formData.cliqAlias}
+                                        onChange={(e) => setFormData({ ...formData, cliqAlias: e.target.value })}
+                                        placeholder="0790123456 or email@bank"
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        For CliQ instant transfers
+                                    </p>
+                                </div>
+                                <div>
+                                    <Label htmlFor="hourlyRate">Hourly Rate (JOD)</Label>
+                                    <Input
+                                        id="hourlyRate"
+                                        type="number"
+                                        value={formData.hourlyRate}
+                                        onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                                        placeholder="5.0"
+                                        step="0.01"
+                                        min="0"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="flex gap-2">
                                 <Button type="submit" disabled={loading}>
                                     {loading ? 'Saving...' : (editingId ? 'Update Employee' : 'Create Employee')}
@@ -265,8 +360,25 @@ export default function EmployeesPage() {
                                             <Users className="w-5 h-5 text-blue-600" />
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-slate-900">{employee.name}</div>
-                                            <div className="text-sm text-slate-500">@{employee.username}</div>
+                                            <h3 className="font-semibold text-slate-900">{employee.name}</h3>
+                                            <p className="text-sm text-slate-500">@{employee.username}</p>
+                                            {employee.pinCode && (
+                                                <p className="text-sm text-blue-600 mt-1">PIN: {employee.pinCode}</p>
+                                            )}
+
+                                            {/* Branch Badges */}
+                                            {employee.userBranches && employee.userBranches.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {employee.userBranches.map((ub: any) => (
+                                                        <span
+                                                            key={ub.id}
+                                                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                                        >
+                                                            {ub.branch.name} ({ub.branch.code})
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         {employee.pinCode && (
                                             <div className="flex items-center gap-1 px-2 py-1 bg-green-50 rounded text-xs text-green-700">
@@ -277,6 +389,16 @@ export default function EmployeesPage() {
                                         {!employee.isActive && (
                                             <div className="px-2 py-1 bg-red-50 rounded text-xs text-red-700">
                                                 Inactive
+                                            </div>
+                                        )}
+                                        {employee.cliqAlias && (
+                                            <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded text-xs text-blue-700">
+                                                ⚡ CliQ: {employee.cliqAlias}
+                                            </div>
+                                        )}
+                                        {employee.hourlyRate && (
+                                            <div className="px-2 py-1 bg-green-50 rounded text-xs text-green-700">
+                                                {employee.hourlyRate} JOD/hr
                                             </div>
                                         )}
                                     </div>

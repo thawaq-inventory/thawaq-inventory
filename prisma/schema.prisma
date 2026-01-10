@@ -6,8 +6,36 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+// Branch/Franchise Management
+model Branch {
+  id          String   @id @default(uuid())
+  name        String   // "Downtown", "Mall Location", etc.
+  code        String   @unique // Short code like "DT", "ML"
+  address     String?
+  phone       String?
+  email       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  // Legacy single-branch users
+  users       User[] @relation("UserPrimaryBranch")
+  
+  // New many-to-many users
+  userBranches UserBranch[]
+  
+  products    Product[]
+  shifts      Shift[]
+  locations   Location[]
+  inventoryLogs InventoryLog[]
+  wasteLogs   WasteLog[]
+  expenses    Expense[]
+  payrollTransactions PayrollTransaction[]
 }
 
 model User {
@@ -18,6 +46,20 @@ model User {
   pinCode   String?  @unique    // Optional: Simple auth for iPad (legacy)
   role      String   @default("EMPLOYEE") // ADMIN or EMPLOYEE
   isActive  Boolean  @default(true)        // Enable/disable account
+  
+  // Multi-branch support
+  // Legacy single branch (kept for backward compatibility)
+  branch      Branch?  @relation("UserPrimaryBranch", fields: [branchId], references: [id])
+  branchId    String?  // Null for super admins
+  isSuperAdmin Boolean @default(false)  // Can manage all branches
+  
+  // New many-to-many branch assignments
+  userBranches UserBranch[]
+  
+  // Payroll fields
+  cliqAlias String?  // CliQ alias for instant transfers (mobile/email)
+  hourlyRate Float?  @default(5.0)  // Hourly rate in JOD
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -28,6 +70,9 @@ model User {
   expensesSubmitted Expense[] @relation("ExpensesSubmitted")
   expensesReviewed  Expense[] @relation("ExpensesReviewed")
   sessions          Session[]
+  shifts            Shift[]
+  shiftTemplates    ShiftTemplate[]
+  payrollTransactions PayrollTransaction[]
 }
 
 model Product {
@@ -35,6 +80,10 @@ model Product {
   name        String
   sku         String?  @unique
   description String?
+  
+  // Branch assignment
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  branchId    String
   
   // Inventory
   stockLevel  Float    @default(0)
@@ -68,6 +117,9 @@ model InventoryLog {
   
   product       Product  @relation(fields: [productId], references: [id])
   productId     String
+  
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  branchId      String
   
   changeAmount  Float    // +5, -2, etc.
   reason        String   // "SALE", "RESTOCK", "WASTE", "ADJUSTMENT"
@@ -176,6 +228,10 @@ model Location {
   address     String?
   phone       String?
   isActive    Boolean  @default(true)
+  
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  branchId    String
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -218,6 +274,10 @@ model WasteLog {
   id            String   @id @default(uuid())
   product       Product  @relation(fields: [productId], references: [id])
   productId     String
+  
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  branchId      String
+  
   quantity      Float
   reason        String   // EXPIRED, DAMAGED, OVER_PREP, SPOILED, OTHER
   costImpact    Float    // Calculated cost of waste
@@ -345,6 +405,9 @@ model Expense {
   photoUrl          String?          // Optional receipt photo
   notes             String?
   
+  branch            Branch           @relation(fields: [branchId], references: [id])
+  branchId          String
+  
   categoryId        String?
   customCategory    String?          // If "Other" selected
   
@@ -380,4 +443,86 @@ model Session {
   expiresAt DateTime
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// Shift Management
+model Shift {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  
+  branch    Branch   @relation(fields: [branchId], references: [id])
+  branchId  String
+  
+  date      DateTime // The date of the shift
+  startTime String   // Format: "HH:MM" (e.g., "09:00")
+  endTime   String   // Format: "HH:MM" (e.g., "17:00")
+  role      String   // Position/role for this shift (e.g., "Manager", "Server", "Chef")
+  notes     String?  // Optional additional notes
+  status    String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShiftTemplate {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  dayOfWeek  Int      // 0 = Monday, 6 = Sunday
+  startTime  String   // Format: "HH:MM"
+  endTime    String   // Format: "HH:MM"
+  role       String   // Position/role
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Payroll Management
+model PayrollTransaction {
+  id              String   @id @default(uuid())
+  employee        User     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId      String
+  
+  branch          Branch   @relation(fields: [branchId], references: [id])
+  branchId        String
+  
+  // Calculation details
+  totalHours      Float
+  hourlyRate      Float
+  finalAmount     Float    // totalHours × hourlyRate
+  
+  // Pay period
+  periodStart     DateTime
+  periodEnd       DateTime
+  
+  // Bank integration
+  transactionId   String?  // Staq API transaction ID
+  reference       String?  // Payment reference number
+  status          String   @default("waiting_bank_approval") // waiting_bank_approval, approved, rejected, failed
+  
+  // Banking details (employee account)
+  accountNumber   String?
+  bankCode        String?
+  
+  // Metadata
+  notes           String?
+  errorMessage    String?  // If transaction fails
+  approvedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Junction table for many-to-many user-branch relationship
+model UserBranch {
+  id        String   @id @default(uuid())
+  userId    String
+  branchId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, branchId])
+  @@index([userId])
+  @@index([branchId])
 }

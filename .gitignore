@@ -50,3 +50,6 @@ yarn-error.log*
 # node binaries
 .node_bin/
 node-v*.pkg
+
+# mTLS certificates (sensitive)
+backend/certs/*

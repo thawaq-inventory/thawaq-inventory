@@ -1,19 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { getBranchFilterForAPI } from '@/lib/branchFilter';
 
 const prisma = new PrismaClient();
 
 // GET /api/admin/users - List all users
 export async function GET(request: NextRequest) {
     try {
+        // Get branch filter from cookies
+        const branchFilter = await getBranchFilterForAPI();
+
         const users = await prisma.user.findMany({
+            where: branchFilter,
             select: {
                 id: true,
                 name: true,
                 username: true,
                 role: true,
                 isActive: true,
+                isSuperAdmin: true,
+                branchId: true,
+                branch: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true
+                    }
+                },
+                userBranches: {
+                    include: {
+                        branch: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true
+                            }
+                        }
+                    }
+                },
+                cliqAlias: true,
+                hourlyRate: true,
+                pinCode: true,
                 createdAt: true
             },
             orderBy: {
@@ -34,7 +62,7 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/users - Create new user
 export async function POST(request: NextRequest) {
     try {
-        const { username, password, name, role } = await request.json();
+        const { username, password, name, role, branchIds, pinCode, cliqAlias, hourlyRate, isSuperAdmin } = await request.json();
 
         // Validation
         if (!username || !password || !name) {
@@ -82,19 +110,60 @@ export async function POST(request: NextRequest) {
                 password: hashedPassword,
                 name,
                 role: role || 'EMPLOYEE',
-                isActive: true
-            },
+                isActive: true,
+                pinCode: pinCode || null,
+                cliqAlias: cliqAlias || null,
+                hourlyRate: hourlyRate || 5.0,
+                isSuperAdmin: isSuperAdmin || false,
+            }
+        });
+
+        // Create UserBranch records if branchIds provided
+        if (branchIds && Array.isArray(branchIds) && branchIds.length > 0) {
+            await prisma.userBranch.createMany({
+                data: branchIds.map((branchId: string) => ({
+                    userId: user.id,
+                    branchId
+                }))
+            });
+        }
+
+        // Fetch complete user with branches
+        const completeUser = await prisma.user.findUnique({
+            where: { id: user.id },
             select: {
                 id: true,
                 name: true,
                 username: true,
                 role: true,
                 isActive: true,
+                isSuperAdmin: true,
+                branchId: true,
+                branch: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true
+                    }
+                },
+                userBranches: {
+                    include: {
+                        branch: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true
+                            }
+                        }
+                    }
+                },
+                cliqAlias: true,
+                hourlyRate: true,
                 createdAt: true
             }
         });
 
-        return NextResponse.json(user, { status: 201 });
+        return NextResponse.json(completeUser, { status: 201 });
     } catch (error) {
         console.error('Error creating user:', error);
         return NextResponse.json(

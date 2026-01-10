@@ -62,14 +62,17 @@ async function updateUser(
 ) {
     try {
         const { id } = await params;
-        const { name, password, role, isActive, pinCode } = await request.json();
+        const { name, password, role, isActive, pinCode, branchIds, cliqAlias, hourlyRate, isSuperAdmin } = await request.json();
 
         const updateData: any = {};
 
         if (name) updateData.name = name;
         if (role) updateData.role = role;
         if (isActive !== undefined) updateData.isActive = isActive;
-        if (pinCode !== undefined) updateData.pinCode = pinCode; // Add PIN support
+        if (pinCode !== undefined) updateData.pinCode = pinCode;
+        if (cliqAlias !== undefined) updateData.cliqAlias = cliqAlias;
+        if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate;
+        if (isSuperAdmin !== undefined) updateData.isSuperAdmin = isSuperAdmin;
 
         // Hash new password if provided
         if (password) {
@@ -82,16 +85,62 @@ async function updateUser(
             updateData.password = await bcrypt.hash(password, 10);
         }
 
-        const user = await prisma.user.update({
+        // Update user
+        await prisma.user.update({
             where: { id },
-            data: updateData,
+            data: updateData
+        });
+
+        // Update branch assignments if branchIds provided
+        if (branchIds !== undefined && Array.isArray(branchIds)) {
+            // Delete existing branch assignments
+            await prisma.userBranch.deleteMany({
+                where: { userId: id }
+            });
+
+            // Create new branch assignments
+            if (branchIds.length > 0) {
+                await prisma.userBranch.createMany({
+                    data: branchIds.map((branchId: string) => ({
+                        userId: id,
+                        branchId
+                    }))
+                });
+            }
+        }
+
+        // Fetch updated user with all relations
+        const user = await prisma.user.findUnique({
+            where: { id },
             select: {
                 id: true,
                 name: true,
                 username: true,
                 role: true,
                 isActive: true,
+                isSuperAdmin: true,
                 pinCode: true,
+                cliqAlias: true,
+                hourlyRate: true,
+                branchId: true,
+                branch: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true
+                    }
+                },
+                userBranches: {
+                    include: {
+                        branch: {
+                            select: {
+                                id: true,
+                                name: true,
+                                code: true
+                            }
+                        }
+                    }
+                },
                 createdAt: true
             }
         });

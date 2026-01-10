@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+*.log
+.env.local
+.vercel
+.DS_Store
+*.md
+FINAL_TROUBLESHOOTING.md
+scripts
+*.pkg
+backend
+create-test-payroll.js

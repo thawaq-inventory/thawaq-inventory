@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, ClipboardList, Scan, ArrowRight, Receipt } from "lucide-react";
+import { Package, ClipboardList, Scan, ArrowRight, Receipt, Calendar } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -40,6 +40,12 @@ export default function EmployeeLanding() {
             description: t('expenses.subtitle'),
             icon: Receipt,
             href: './employee/expenses',
+        },
+        {
+            title: 'My Shifts',
+            description: 'View your upcoming work schedule',
+            icon: Calendar,
+            href: './employee/shifts',
         },
         {
             title: t('scanItem'),

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getBranchFilterForAPI } from '@/lib/branchFilter';
 
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const search = searchParams.get('search');
         const sku = searchParams.get('sku');
+
+        // Get branch filter from cookies
+        const branchFilter = await getBranchFilterForAPI();
 
         if (sku) {
             const product = await prisma.product.findUnique({
@@ -14,14 +18,20 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(product ? [product] : []);
         }
 
+        const whereClause: any = {
+            ...branchFilter,
+        };
+
+        if (search) {
+            whereClause.OR = [
+                { name: { contains: search } },
+                { sku: { contains: search } },
+                { description: { contains: search } },
+            ];
+        }
+
         const products = await prisma.product.findMany({
-            where: search ? {
-                OR: [
-                    { name: { contains: search } },
-                    { sku: { contains: search } },
-                    { description: { contains: search } },
-                ]
-            } : undefined,
+            where: whereClause,
             orderBy: { name: 'asc' }
         });
         return NextResponse.json(products);

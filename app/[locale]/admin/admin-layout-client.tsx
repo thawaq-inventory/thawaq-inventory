@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Logo } from "@/components/ui/logo";
+import BranchSwitcher from "@/components/BranchSwitcher";
 import { Button } from "@/components/ui/button";
 import {
     LayoutDashboard,
@@ -25,7 +26,10 @@ import {
     Store,
     DollarSign,
     Receipt,
-    Tag
+    Tag,
+    Calendar,
+    Building2,
+    Shield
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import { usePathname } from 'next/navigation';
@@ -42,6 +46,11 @@ export function AdminLayoutClient({
     const t = useTranslations('Admin');
     const pathname = usePathname();
     const [inventoryOpen, setInventoryOpen] = useState(pathname?.includes('/inventory'));
+
+    // If on login page, render without admin layout
+    if (pathname?.includes('/login')) {
+        return <>{children}</>;
+    }
 
     const isActive = (path: string) => {
         if (path === '/admin') {
@@ -154,8 +163,20 @@ export function AdminLayoutClient({
                             </h3>
                         </div>
 
+                        <NavLink href="/admin/users" icon={Shield}>
+                            All Users
+                        </NavLink>
+
                         <NavLink href="/admin/employees" icon={Users}>
                             Manage Employees
+                        </NavLink>
+
+                        <NavLink href="/admin/roster" icon={Calendar}>
+                            Shifts Roster
+                        </NavLink>
+
+                        <NavLink href="/admin/payroll/approvals" icon={DollarSign}>
+                            Payroll Approvals
                         </NavLink>
                     </div>
 
@@ -224,6 +245,10 @@ export function AdminLayoutClient({
                         <NavLink href="/admin/locations" icon={Store}>
                             Locations
                         </NavLink>
+
+                        <NavLink href="/admin/branches" icon={Building2}>
+                            🏢 Branches
+                        </NavLink>
                     </div>
                 </nav>
 
@@ -247,6 +272,19 @@ export function AdminLayoutClient({
 
             {/* Main Content */}
             <div className="flex-1 pl-64 flex flex-col min-h-screen">
+                {/* Header Bar */}
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
+                    <div className="flex items-center gap-4">
+                        <BranchSwitcher
+                            userBranchId={null}
+                            isSuperAdmin={true}
+                        />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <p className="text-sm text-slate-600">Welcome back, Admin</p>
+                    </div>
+                </header>
+
                 {/* Page Content */}
                 <main className="flex-1 p-8">
                     {children}
