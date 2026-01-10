@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Verify the user exists before creating expense
+        // Verify the user exists and get their branch before creating expense
         const user = await prisma.user.findUnique({
             where: { id: submittedById },
-            select: { id: true }
+            select: { id: true, branchId: true }
         });
 
         if (!user) {
@@ -27,6 +27,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: 'Employee not found. Please log in again.' },
                 { status: 404 }
+            );
+        }
+
+        if (!user.branchId) {
+            console.error('User has no branch assigned:', submittedById);
+            return NextResponse.json(
+                { error: 'Employee is not assigned to a branch. Please contact an administrator.' },
+                { status: 400 }
             );
         }
 
@@ -58,6 +66,7 @@ export async function POST(request: NextRequest) {
                 categoryId: categoryId || null,
                 customCategory: customCategory || null,
                 submittedById,
+                branchId: user.branchId,
                 debitAccountId,
                 creditAccountId,
             },
