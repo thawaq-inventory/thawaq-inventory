@@ -3,6 +3,21 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+    // Create a default branch
+    const branch = await prisma.branch.upsert({
+        where: { code: 'MAIN' },
+        update: {},
+        create: {
+            name: 'Main Branch',
+            code: 'MAIN',
+            address: '123 Main St',
+            phone: '123-456-7890',
+            isActive: true,
+        },
+    });
+
+    console.log('✅ Default branch created/found:', branch.name);
+
     // Create sample products
     const products = [
         {
@@ -14,6 +29,7 @@ async function main() {
             minStock: 10,
             cost: 12.00,
             price: 25.00,
+            branchId: branch.id,
         },
         {
             name: 'Tomatoes',
@@ -24,6 +40,7 @@ async function main() {
             minStock: 5,
             cost: 2.50,
             price: 5.00,
+            branchId: branch.id,
         },
         {
             name: 'Olive Oil',
@@ -34,6 +51,7 @@ async function main() {
             minStock: 3,
             cost: 8.00,
             price: 15.00,
+            branchId: branch.id,
         },
         {
             name: 'Rice',
@@ -44,6 +62,7 @@ async function main() {
             minStock: 20,
             cost: 1.50,
             price: 3.00,
+            branchId: branch.id,
         },
     ];
 
@@ -65,6 +84,7 @@ async function main() {
             password: '$2b$10$YourHashedPasswordHere', // This would be generated with bcrypt
             pinCode: '1234',
             role: 'ADMIN',
+            branchId: branch.id,
         },
     });
 
