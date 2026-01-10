@@ -15,6 +15,15 @@ interface Employee {
     isActive: boolean;
     cliqAlias: string | null;
     hourlyRate: number | null;
+    userBranches?: Array<{
+        id: string;
+        branchId: string;
+        branch: {
+            id: string;
+            name: string;
+            code: string;
+        };
+    }>;
 }
 
 interface Branch {
