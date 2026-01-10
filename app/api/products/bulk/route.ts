@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
             minStock: parseFloat(product.minStock) || 0,
             cost: parseFloat(product.cost) || 0,
             price: parseFloat(product.price) || 0,
+            branchId: product.branchId,
         }));
 
         // Create all products individually (to avoid createMany compatibility issues)
