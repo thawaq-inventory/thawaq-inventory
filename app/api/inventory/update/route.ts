@@ -6,8 +6,18 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { productId, changeAmount, reason, userId } = body;
 
+        // Get the product to retrieve its branchId
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+            select: { id: true, branchId: true }
+        });
+
+        if (!product) {
+            return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+        }
+
         // Update product stock and create log
-        const [product, log] = await prisma.$transaction([
+        const [updatedProduct, log] = await prisma.$transaction([
             prisma.product.update({
                 where: { id: productId },
                 data: {
@@ -19,6 +29,7 @@ export async function POST(request: NextRequest) {
             prisma.inventoryLog.create({
                 data: {
                     productId,
+                    branchId: product.branchId,
                     changeAmount,
                     reason: reason || 'ADJUSTMENT',
                     userId

@@ -39,13 +39,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get employee details
+        // Get employee details including branch
         const employee = await prisma.user.findUnique({
             where: { id: employeeId },
             select: {
                 id: true,
                 name: true,
                 username: true,
+                branchId: true,
             },
         });
 
@@ -53,6 +54,13 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: 'Employee not found' },
                 { status: 404 }
+            );
+        }
+
+        if (!employee.branchId) {
+            return NextResponse.json(
+                { error: 'Employee is not assigned to a branch' },
+                { status: 400 }
             );
         }
 
@@ -69,6 +77,13 @@ export async function POST(request: NextRequest) {
         let status = 'waiting_bank_approval';
         let errorMessage = null;
 
+        // Note: staqClient integration disabled until module is properly set up
+        // The transaction will be saved as 'failed' status for now
+        status = 'failed';
+        errorMessage = 'Bank integration not yet configured';
+        console.log('[Payroll] Staq API integration not configured - saving transaction as failed');
+
+        /*
         try {
             // Dynamically import the StaqClient (CommonJS module)
             const { getStaqClient } = require('@/backend/services/staqClient');
@@ -109,11 +124,13 @@ export async function POST(request: NextRequest) {
             status = 'failed';
             errorMessage = `Bank API unreachable: ${error.message}`;
         }
+        */
 
         // Save transaction to database
         const payrollTransaction = await prisma.payrollTransaction.create({
             data: {
                 employeeId: employee.id,
+                branchId: employee.branchId,
                 totalHours,
                 hourlyRate,
                 finalAmount,
