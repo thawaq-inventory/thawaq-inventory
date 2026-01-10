@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { userId, date, startTime, endTime, role, notes } = body;
+        const { userId, date, startTime, endTime, role, notes, branchId } = body;
 
         // Validate required fields
         if (!userId || !date || !startTime || !endTime || !role) {
@@ -77,6 +77,23 @@ export async function POST(request: NextRequest) {
                 { error: 'Missing required fields' },
                 { status: 400 }
             );
+        }
+
+        // Get user's branch if not provided
+        let shiftBranchId = branchId;
+        if (!shiftBranchId) {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { branchId: true }
+            });
+            if (user && user.branchId) {
+                shiftBranchId = user.branchId;
+            } else {
+                return NextResponse.json(
+                    { error: 'Branch ID is required or user must be assigned to a primary branch' },
+                    { status: 400 }
+                );
+            }
         }
 
         // Check for shift conflicts (overlapping shifts for the same user on the same day)
@@ -111,6 +128,7 @@ export async function POST(request: NextRequest) {
         const shift = await prisma.shift.create({
             data: {
                 userId,
+                branchId: shiftBranchId,
                 date: new Date(date),
                 startTime,
                 endTime,

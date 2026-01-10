@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
                 name: body.name,
                 sku: body.sku,
                 description: body.description,
+                branchId: body.branchId,
                 stockLevel: body.stockLevel || 0,
                 unit: body.unit || 'UNIT',
                 minStock: body.minStock || 0,

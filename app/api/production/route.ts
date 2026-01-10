@@ -17,6 +17,16 @@ export async function POST(request: NextRequest) {
         }
 
         // Create production batch
+        // First get the output product to retrieve its branchId
+        const product = await prisma.product.findUnique({
+            where: { id: outputProductId },
+            select: { id: true, branchId: true }
+        });
+
+        if (!product) {
+            return NextResponse.json({ error: 'Output product not found' }, { status: 404 });
+        }
+
         const batch = await prisma.productionBatch.create({
             data: {
                 recipeId: recipeId || null,
@@ -61,6 +71,7 @@ export async function POST(request: NextRequest) {
             await prisma.inventoryLog.create({
                 data: {
                     productId: ing.productId,
+                    branchId: product.branchId,
                     changeAmount: -ing.quantityUsed,
                     reason: 'PRODUCTION',
                     userId: userId || null,
@@ -82,6 +93,7 @@ export async function POST(request: NextRequest) {
         await prisma.inventoryLog.create({
             data: {
                 productId: outputProductId,
+                branchId: product.branchId,
                 changeAmount: quantityProduced,
                 reason: 'PRODUCTION',
                 userId: userId || null,

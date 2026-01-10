@@ -17,9 +17,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get product to calculate cost impact
+        // Get product to calculate cost impact and get branchId
         const product = await prisma.product.findUnique({
-            where: { id: productId }
+            where: { id: productId },
+            select: { cost: true, branchId: true }
         });
 
         if (!product) {
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
                 quantity,
                 reason,
                 costImpact,
+                branchId: product.branchId,
                 notes: notes || null,
                 locationId: locationId || null,
                 userId: userId || null,
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
         await prisma.inventoryLog.create({
             data: {
                 productId,
+                branchId: product.branchId,
                 changeAmount: -quantity,
                 reason: 'WASTE',
                 userId: userId || null,

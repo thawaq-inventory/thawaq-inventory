@@ -52,19 +52,21 @@ export async function POST(request: NextRequest) {
 
         // Update stock levels for all items
         for (const item of items) {
-            await prisma.product.update({
+            const updatedProduct = await prisma.product.update({
                 where: { id: item.productId },
                 data: {
                     stockLevel: {
                         increment: item.quantity
                     }
-                }
+                },
+                select: { branchId: true }
             });
 
             // Create inventory log
             await prisma.inventoryLog.create({
                 data: {
                     productId: item.productId,
+                    branchId: updatedProduct.branchId,
                     changeAmount: item.quantity,
                     reason: 'RESTOCK',
                     userId: userId || null,
