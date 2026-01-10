@@ -7,11 +7,11 @@ const prisma = new PrismaClient();
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, address, phone } = body;
+        const { name, address, phone, branchId } = body;
 
-        if (!name) {
+        if (!name || !branchId) {
             return NextResponse.json(
-                { error: 'name is required' },
+                { error: 'name and branchId are required' },
                 { status: 400 }
             );
         }
@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
                 name,
                 address: address || null,
                 phone: phone || null,
+                branchId,
             }
         });
 
