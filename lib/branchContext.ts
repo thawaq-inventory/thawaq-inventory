@@ -68,7 +68,7 @@ export function getActiveBranchId(
     context: BranchContext,
     selectedBranchId?: string | null
 ): string | null {
-    if (context.isSuperAdmin move {
+    if (context.isSuperAdmin) {
         // Super admin can select which branch to view
         return selectedBranchId || null;
     }
