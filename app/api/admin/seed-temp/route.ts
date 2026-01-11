@@ -24,6 +24,7 @@ export async function GET() {
             update: {
                 password: hashedPassword,
                 role: 'ADMIN',
+                isSuperAdmin: true, // Grant Super Admin privs
                 branch: {
                     connect: { id: branch.id }
                 }
@@ -33,6 +34,7 @@ export async function GET() {
                 username: 'admin', // Use username
                 password: hashedPassword,
                 role: 'ADMIN',
+                isSuperAdmin: true, // Grant Super Admin privs
                 branch: {
                     connect: { id: branch.id },
                 },
