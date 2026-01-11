@@ -93,9 +93,17 @@ export async function POST(request: NextRequest) {
         if (employee.id) {
             const userWithBranch = await prisma.user.findUnique({
                 where: { id: employee.id },
-                select: { branchId: true }
+                select: {
+                    branchId: true,
+                    userBranches: {
+                        select: { branchId: true },
+                        take: 1
+                    }
+                }
             });
-            branchId = userWithBranch?.branchId;
+
+            // Prefer legacy branchId, fallback to first UserBranch
+            branchId = userWithBranch?.branchId || userWithBranch?.userBranches[0]?.branchId;
         }
 
         if (branchId) {
