@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (employee.role !== 'employee') {
+        if (employee.role?.toLowerCase() !== 'employee') {
             return NextResponse.json(
                 { error: 'Not an employee account' },
                 { status: 403 }
