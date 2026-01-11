@@ -13,16 +13,16 @@ export async function GET() {
             create: {
                 name: 'Main Branch',
                 code: 'MAIN',
-                currency: 'JOD',
+                // currency: 'JOD', // Removed: Not in schema, will default or be handled by logic
             },
         });
 
         // 2. Create Admin User
         const hashedPassword = await hash('admin123', 10);
         const admin = await prisma.user.upsert({
-            where: { email: 'admin@thawaq.com' },
+            where: { username: 'admin' }, // Use username instead of email
             update: {
-                password: hashedPassword, // Reset password if exists
+                password: hashedPassword,
                 role: 'ADMIN',
                 branches: {
                     connect: { id: branch.id }
@@ -30,7 +30,7 @@ export async function GET() {
             },
             create: {
                 name: 'Admin',
-                email: 'admin@thawaq.com',
+                username: 'admin', // Use username
                 password: hashedPassword,
                 role: 'ADMIN',
                 branches: {
@@ -39,7 +39,7 @@ export async function GET() {
             },
         });
 
-        return NextResponse.json({ success: true, message: 'Admin seeded', email: 'admin@thawaq.com', password: 'admin123' });
+        return NextResponse.json({ success: true, message: 'Admin seeded', username: 'admin', password: 'admin123' });
     } catch (error) {
         console.error('Seed error:', error);
         return NextResponse.json({ success: false, error: 'Failed to seed' }, { status: 500 });
