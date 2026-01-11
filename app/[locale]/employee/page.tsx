@@ -1,14 +1,12 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { Link, useRouter } from "@/i18n/routing";
 import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, ClipboardList, Scan, ArrowRight, Receipt, Calendar } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-
-import { Link } from "@/i18n/routing";
 
 export default function EmployeeLanding() {
     const t = useTranslations('Employee');
@@ -27,31 +25,31 @@ export default function EmployeeLanding() {
             title: t('receiveStock'),
             description: t('receiveStockDesc'),
             icon: Package,
-            href: './employee/receiving',
+            href: '/employee/receiving',
         },
         {
             title: t('stockCount'),
             description: t('stockCountDesc'),
             icon: ClipboardList,
-            href: './employee/count',
+            href: '/employee/count',
         },
         {
             title: t('expenses.title'),
             description: t('expenses.subtitle'),
             icon: Receipt,
-            href: './employee/expenses',
+            href: '/employee/expenses',
         },
         {
             title: 'My Shifts',
             description: 'View your upcoming work schedule',
             icon: Calendar,
-            href: './employee/shifts',
+            href: '/employee/shifts',
         },
         {
             title: t('scanItem'),
             description: t('scanItemDesc'),
             icon: Scan,
-            href: './employee/scan',
+            href: '/employee/scan',
         }
     ];
 

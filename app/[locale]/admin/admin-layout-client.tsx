@@ -31,8 +31,7 @@ import {
     Building2,
     Shield
 } from "lucide-react";
-import { Link } from "@/i18n/routing";
-import { usePathname } from 'next/navigation';
+import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 

@@ -1,9 +1,15 @@
+import { put } from '@vercel/blob';
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 
 export async function POST(request: NextRequest) {
+    const { searchParams } = new URL(request.url);
+    const filename = searchParams.get('filename');
+
+    if (filename && request.body) {
+        // Handle direct upload (optional, for client-side uploads)
+        // or handle multipart form data as before
+    }
+
     try {
         const formData = await request.formData();
         const file = formData.get('file') as File;
@@ -15,26 +21,11 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create receipts directory if it doesn't exist
-        const receiptsDir = join(process.cwd(), 'public', 'receipts');
-        if (!existsSync(receiptsDir)) {
-            await mkdir(receiptsDir, { recursive: true });
-        }
+        const blob = await put(file.name, file, {
+            access: 'public',
+        });
 
-        // Generate unique filename
-        const timestamp = Date.now();
-        const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const filepath = join(receiptsDir, filename);
-
-        // Convert file to buffer and save
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        await writeFile(filepath, buffer);
-
-        // Return public URL
-        const publicUrl = `/receipts/${filename}`;
-
-        return NextResponse.json({ url: publicUrl }, { status: 201 });
+        return NextResponse.json(blob);
     } catch (error) {
         console.error('Error uploading file:', error);
         return NextResponse.json(

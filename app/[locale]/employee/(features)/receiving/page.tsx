@@ -65,8 +65,16 @@ export default function ReceivingPage() {
                 body: JSON.stringify({
                     productId: product.id,
                     changeAmount: amount,
+
                     reason: 'RESTOCK',
-                    userId: null,
+                    userId: (() => {
+                        try {
+                            const session = localStorage.getItem('employeeSession');
+                            return session ? JSON.parse(session).id : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    })(),
                 }),
             });
 

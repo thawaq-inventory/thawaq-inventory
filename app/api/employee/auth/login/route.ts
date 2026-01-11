@@ -78,11 +78,40 @@ export async function POST(request: NextRequest) {
         console.log('Login successful for:', employee.name);
 
         // Return employee session data
-        return NextResponse.json({
+        const response = NextResponse.json({
             id: employee.id,
             name: employee.name,
             username: employee.username,
+            branchId: employee.pinCode ? null : null // We don't need to send branchId to client if we handle it in cookie, but keeping structure clean
         });
+
+        // Set branch context cookie for API calls
+        // Identify the branch ID - for employees, they are assigned to a specific branch
+        // We need to fetch the user's branch ID if it wasn't selected
+        let branchId = null;
+
+        if (employee.id) {
+            const userWithBranch = await prisma.user.findUnique({
+                where: { id: employee.id },
+                select: { branchId: true }
+            });
+            branchId = userWithBranch?.branchId;
+        }
+
+        if (branchId) {
+            // Set the cookie for branch filtering
+            const cookieValue = JSON.stringify([branchId]);
+            response.cookies.set('selectedBranches', cookieValue, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 60 * 60 * 24 * 7 // 1 week
+            });
+            console.log('Set branch context cookie for employee:', branchId);
+        }
+
+        return response;
     } catch (error) {
         console.error('Login error:', error);
         return NextResponse.json(
