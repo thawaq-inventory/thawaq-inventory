@@ -1,6 +1,6 @@
 {
     "name": "thawaq-inventory",
     "version": 2,
-    "buildCommand": "prisma generate && next build",
+    "buildCommand": "prisma generate && prisma db push && next build",
     "installCommand": "npm install"
 }
