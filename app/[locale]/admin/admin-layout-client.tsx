@@ -74,6 +74,16 @@ export function AdminLayoutClient({
         );
     };
 
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/en/admin/login';
+        } catch (error) {
+            console.error('Logout failed', error);
+            window.location.href = '/en/admin/login';
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-slate-50">
             {/* Sidebar */}
@@ -262,10 +272,15 @@ export function AdminLayoutClient({
                         </div>
                         <LanguageSwitcher />
                     </div>
-                    <Button variant="ghost" className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={handleLogout}
+                    >
                         <LogOut className="w-4 h-4 mr-2" />
                         {t('signOut')}
                     </Button>
+
                 </div>
             </aside>
 
