@@ -24,7 +24,7 @@ export async function GET() {
             update: {
                 password: hashedPassword,
                 role: 'ADMIN',
-                branches: {
+                branch: {
                     connect: { id: branch.id }
                 }
             },
@@ -33,7 +33,7 @@ export async function GET() {
                 username: 'admin', // Use username
                 password: hashedPassword,
                 role: 'ADMIN',
-                branches: {
+                branch: {
                     connect: { id: branch.id },
                 },
             },
