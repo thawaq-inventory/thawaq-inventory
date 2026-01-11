@@ -29,7 +29,10 @@ export default function EmployeeLoginPage() {
         try {
             const res = await fetch('/api/admin/users');
             const data = await res.json();
-            const employeeUsers = data.filter((u: any) => u.role === 'employee');
+            // Filter for employees (case-insensitive)
+            const employeeUsers = data.filter((u: any) =>
+                u.role?.toUpperCase() === 'EMPLOYEE'
+            );
             setEmployees(employeeUsers);
         } catch (error) {
             console.error('Error fetching employees:', error);
