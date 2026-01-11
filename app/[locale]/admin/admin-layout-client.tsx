@@ -256,7 +256,7 @@ export function AdminLayoutClient({
                         </NavLink>
 
                         <NavLink href="/admin/branches" icon={Building2}>
-                            🏢 Branches
+                            Branches
                         </NavLink>
                     </div>
                 </nav>

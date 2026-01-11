@@ -24,6 +24,7 @@ interface User {
     branch?: Branch | null;
     cliqAlias: string | null;
     hourlyRate: number | null;
+    pinCode: string | null;
 }
 
 export default function UsersManagementPage() {
@@ -39,6 +40,7 @@ export default function UsersManagementPage() {
         name: '',
         username: '',
         password: '',
+        pinCode: '',
         role: 'EMPLOYEE',
         isSuperAdmin: false,
         branchId: '',
@@ -76,6 +78,7 @@ export default function UsersManagementPage() {
             name: '',
             username: '',
             password: '',
+            pinCode: '',
             role: 'EMPLOYEE',
             isSuperAdmin: false,
             branchId: '',
@@ -105,6 +108,7 @@ export default function UsersManagementPage() {
                 branchId: formData.isSuperAdmin ? null : (formData.branchId || null),
                 cliqAlias: formData.cliqAlias || null,
                 hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : 5.0,
+                pinCode: formData.pinCode,
             };
 
             // Only include password if creating new user or editing and password is provided
@@ -140,6 +144,7 @@ export default function UsersManagementPage() {
             name: user.name,
             username: user.username,
             password: '', // Don't prefill password
+            pinCode: user.pinCode || '',
             role: user.role,
             isSuperAdmin: user.isSuperAdmin,
             branchId: user.branchId || '',
@@ -241,14 +246,29 @@ export default function UsersManagementPage() {
                             </div>
 
                             <div>
-                                <Label htmlFor="password">Password {!editingId && '*'}</Label>
+                                <Label htmlFor="password">Password {!editingId && formData.role === 'ADMIN' && '*'}</Label>
                                 <Input
                                     id="password"
                                     type="password"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    required={!editingId}
-                                    placeholder={editingId ? "Leave blank to keep current password" : "Enter password"}
+                                    required={!editingId && formData.role === 'ADMIN'}
+                                    placeholder={editingId ? "Leave blank to keep current" : (formData.role === 'ADMIN' ? "Required for Admins" : "Optional for Employees")}
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="pinCode">PIN Code * (Required for App Access)</Label>
+                                <Input
+                                    id="pinCode"
+                                    value={formData.pinCode}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        setFormData({ ...formData, pinCode: value });
+                                    }}
+                                    required
+                                    placeholder="4-digit PIN"
+                                    maxLength={4}
                                 />
                             </div>
 
@@ -361,6 +381,7 @@ export default function UsersManagementPage() {
                                         <div>
                                             <div className="font-semibold text-slate-900">{user.name}</div>
                                             <div className="text-sm text-slate-500">@{user.username}</div>
+                                            {user.pinCode && <div className="text-xs text-slate-400 mt-0.5">PIN: {user.pinCode}</div>}
                                         </div>
                                         {getRoleBadge(user)}
                                         {user.branch && (
