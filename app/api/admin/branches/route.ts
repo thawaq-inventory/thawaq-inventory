@@ -11,15 +11,15 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Verify user is super admin
+        // Verify user is super admin or admin
         const sessionData = await prisma.session.findUnique({
             where: { token: authToken.value },
             include: { user: true },
         });
 
-        if (!sessionData?.user.isSuperAdmin) {
+        if (!sessionData?.user.isSuperAdmin && sessionData?.user.role !== 'ADMIN') {
             return NextResponse.json(
-                { error: 'Only super admins can access branch management' },
+                { error: 'Unauthorized access to branch management' },
                 { status: 403 }
             );
         }
