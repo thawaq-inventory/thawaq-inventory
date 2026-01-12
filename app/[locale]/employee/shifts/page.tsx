@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, ArrowLeft, Loader2, CalendarDays } from "lucide-react";
@@ -20,6 +21,7 @@ interface Shift {
 }
 
 export default function EmployeeShiftsPage() {
+    const t = useTranslations('Employee');
     const router = useRouter();
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,9 +39,16 @@ export default function EmployeeShiftsPage() {
         // Get employee ID from session
         try {
             const sessionData = JSON.parse(session);
-            const userId = sessionData.userId;
+            // Support both 'id' (from login API) and 'userId' field names
+            const userId = sessionData.id || sessionData.userId;
             const name = sessionData.name || 'Employee';
             setEmployeeName(name);
+
+            if (!userId) {
+                console.error('No user ID found in session:', sessionData);
+                setError('Session error. Please log in again.');
+                return;
+            }
 
             // Fetch shifts for this employee
             fetchShifts(userId);
@@ -62,6 +71,8 @@ export default function EmployeeShiftsPage() {
             const startDate = today.toISOString().split('T')[0];
             const endDate = futureDate.toISOString().split('T')[0];
 
+            console.log('Fetching shifts for userId:', userId, 'from', startDate, 'to', endDate);
+
             const response = await fetch(
                 `/api/shifts?userId=${userId}&startDate=${startDate}&endDate=${endDate}`
             );
@@ -71,6 +82,7 @@ export default function EmployeeShiftsPage() {
             }
 
             const data = await response.json();
+            console.log('Fetched shifts:', data);
             setShifts(data);
         } catch (err) {
             console.error('Error fetching shifts:', err);
@@ -103,7 +115,7 @@ export default function EmployeeShiftsPage() {
             day: 'numeric',
             year: 'numeric'
         };
-        return date.toLocaleDateString('en-US', options);
+        return date.toLocaleDateString('ar-JO', options);
     }
 
     // Group shifts by week
@@ -154,7 +166,7 @@ export default function EmployeeShiftsPage() {
                             className="text-slate-600 hover:text-teal-600"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back
+                            {t('backToDashboard')}
                         </Button>
                         <LanguageSwitcher />
                     </div>
@@ -166,9 +178,9 @@ export default function EmployeeShiftsPage() {
                     <div className="text-center">
                         <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-3 mb-2">
                             <CalendarDays className="w-8 h-8 text-teal-600" />
-                            My Shifts
+                            {t('shifts.title')}
                         </h1>
-                        <p className="text-slate-600">Welcome, {employeeName}</p>
+                        <p className="text-slate-600">{t('timesheet.welcomeBack')}, {employeeName}</p>
                     </div>
                 </header>
 
@@ -185,15 +197,15 @@ export default function EmployeeShiftsPage() {
                         <CardContent className="p-6">
                             <div className="text-center">
                                 <div className="text-4xl font-bold text-teal-600">{shifts.length}</div>
-                                <div className="text-sm text-slate-600 mt-1">Upcoming Shifts</div>
+                                <div className="text-sm text-slate-600 mt-1">{t('timesheet.shiftsThisWeek')}</div>
                             </div>
                         </CardContent>
                     </Card>
                     <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
                         <CardContent className="p-6">
                             <div className="text-center">
-                                <div className="text-4xl font-bold text-blue-600">{calculateTotalHours().toFixed(1)}h</div>
-                                <div className="text-sm text-slate-600 mt-1">Total Hours</div>
+                                <div className="text-4xl font-bold text-blue-600">{calculateTotalHours().toFixed(1)}{t('timesheet.hours')}</div>
+                                <div className="text-sm text-slate-600 mt-1">{t('timesheet.hoursWorked')}</div>
                             </div>
                         </CardContent>
                     </Card>
@@ -204,8 +216,7 @@ export default function EmployeeShiftsPage() {
                     <Card>
                         <CardContent className="p-12 text-center">
                             <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                            <p className="text-slate-500 text-lg">No upcoming shifts scheduled</p>
-                            <p className="text-slate-400 text-sm mt-2">Check back later or contact your manager</p>
+                            <p className="text-slate-500 text-lg">{t('shifts.description')}</p>
                         </CardContent>
                     </Card>
                 ) : (
@@ -219,7 +230,7 @@ export default function EmployeeShiftsPage() {
                             return (
                                 <div key={weekKey}>
                                     <h2 className="text-lg font-semibold text-slate-700 mb-3">
-                                        Week of {weekStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} - {weekEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                                        {weekStart.toLocaleDateString('ar-JO', { month: 'long', day: 'numeric' })} - {weekEnd.toLocaleDateString('ar-JO', { month: 'long', day: 'numeric' })}
                                     </h2>
                                     <div className="space-y-3">
                                         {weekShifts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(shift => (
@@ -242,7 +253,7 @@ export default function EmployeeShiftsPage() {
                                                             </div>
                                                             {shift.notes && (
                                                                 <div className="mt-2 text-sm text-slate-500">
-                                                                    Note: {shift.notes}
+                                                                    {shift.notes}
                                                                 </div>
                                                             )}
                                                         </div>

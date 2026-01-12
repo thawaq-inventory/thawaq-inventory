@@ -77,34 +77,31 @@ export async function POST(request: NextRequest) {
 
         console.log('Login successful for:', employee.name);
 
-        // Return employee session data
+        // Get the user's branch ID for session
+        let branchId = null;
+        const userWithBranch = await prisma.user.findUnique({
+            where: { id: employee.id },
+            select: {
+                branchId: true,
+                userBranches: {
+                    select: { branchId: true },
+                    take: 1
+                }
+            }
+        });
+
+        // Prefer legacy branchId, fallback to first UserBranch
+        branchId = userWithBranch?.branchId || userWithBranch?.userBranches[0]?.branchId || null;
+
+        console.log('Employee branchId:', branchId);
+
+        // Return employee session data WITH branchId
         const response = NextResponse.json({
             id: employee.id,
             name: employee.name,
             username: employee.username,
-            branchId: employee.pinCode ? null : null // We don't need to send branchId to client if we handle it in cookie, but keeping structure clean
+            branchId: branchId  // Include branchId in session for clock in
         });
-
-        // Set branch context cookie for API calls
-        // Identify the branch ID - for employees, they are assigned to a specific branch
-        // We need to fetch the user's branch ID if it wasn't selected
-        let branchId = null;
-
-        if (employee.id) {
-            const userWithBranch = await prisma.user.findUnique({
-                where: { id: employee.id },
-                select: {
-                    branchId: true,
-                    userBranches: {
-                        select: { branchId: true },
-                        take: 1
-                    }
-                }
-            });
-
-            // Prefer legacy branchId, fallback to first UserBranch
-            branchId = userWithBranch?.branchId || userWithBranch?.userBranches[0]?.branchId;
-        }
 
         if (branchId) {
             // Set the cookie for branch filtering

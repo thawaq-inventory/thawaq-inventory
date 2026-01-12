@@ -19,6 +19,12 @@ model Branch {
   phone       String?
   email       String?
   isActive    Boolean  @default(true)
+  
+  // Geolocation for clock-in verification
+  latitude    Float?    // GPS latitude for geofencing
+  longitude   Float?    // GPS longitude for geofencing
+  geoRadius   Float     @default(200) // Radius in meters for clock-in validity (default 200m)
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -36,6 +42,7 @@ model Branch {
   wasteLogs   WasteLog[]
   expenses    Expense[]
   payrollTransactions PayrollTransaction[]
+  clockEntries ClockEntry[]
 }
 
 model User {
@@ -73,6 +80,7 @@ model User {
   shifts            Shift[]
   shiftTemplates    ShiftTemplate[]
   payrollTransactions PayrollTransaction[]
+  clockEntries      ClockEntry[]
 }
 
 model Product {
@@ -525,4 +533,36 @@ model UserBranch {
   @@unique([userId, branchId])
   @@index([userId])
   @@index([branchId])
+}
+
+// Clock In/Out Tracking
+model ClockEntry {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branchId      String
+  branch        Branch    @relation(fields: [branchId], references: [id])
+  
+  clockInTime   DateTime
+  clockOutTime  DateTime?
+  
+  // Location verification
+  clockInLat    Float?
+  clockInLng    Float?
+  clockOutLat   Float?
+  clockOutLng   Float?
+  
+  // Source of clock entry (for future face scanner integration)
+  clockInSource   String  @default("app")  // "app", "face_scanner", "manual"
+  clockOutSource  String?
+  
+  notes         String?
+  totalHours    Float?    // Calculated on clock out
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([branchId])
+  @@index([clockInTime])
 }

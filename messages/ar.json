@@ -61,6 +61,21 @@
         "backToDashboard": "العودة للوحة التحكم",
         "lastScanned": "آخر مسح",
         "processItem": "معالجة المنتج",
+        "login": {
+            "title": "تسجيل دخول الموظف",
+            "selectEmployee": "اختر الموظف",
+            "chooseName": "اختر اسمك...",
+            "enterPin": "أدخل رمز PIN",
+            "clear": "مسح",
+            "loggingIn": "جاري تسجيل الدخول...",
+            "invalidPin": "رمز PIN غير صحيح. حاول مرة أخرى.",
+            "selectEmployeeError": "الرجاء اختيار موظف",
+            "enterFullPin": "الرجاء إدخال رمز PIN مكون من 4 أرقام"
+        },
+        "shifts": {
+            "title": "مناوباتي",
+            "description": "عرض جدول عملك القادم"
+        },
         "expenses": {
             "title": "تقديم مصروف",
             "subtitle": "ارفع صورة الإيصال وسجل المصاريف اليومية",
@@ -140,7 +155,8 @@
         "error": "حدث خطأ",
         "saveSuccess": "تم الحفظ بنجاح!",
         "saveFailed": "فشل الحفظ",
-        "switchLanguage": "تغيير اللغة"
+        "switchLanguage": "تغيير اللغة",
+        "signOut": "تسجيل الخروج"
     },
     "Product": {
         "addProduct": "إضافة منتج",

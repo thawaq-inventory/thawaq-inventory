@@ -103,14 +103,14 @@ export default function EmployeeLoginPage() {
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                         <Users className="w-8 h-8 text-white" />
                     </div>
-                    <CardTitle className="text-2xl">Employee Login</CardTitle>
-                    <CardDescription>Select your name and enter your PIN</CardDescription>
+                    <CardTitle className="text-2xl">{t('login.title')}</CardTitle>
+                    <CardDescription>{t('login.selectEmployee')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {/* Employee Selection */}
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Select Employee
+                            {t('login.selectEmployee')}
                         </label>
                         <select
                             value={selectedEmployeeId}
@@ -121,7 +121,7 @@ export default function EmployeeLoginPage() {
                             }}
                             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
                         >
-                            <option value="">Choose your name...</option>
+                            <option value="">{t('login.chooseName')}</option>
                             {employees.map((emp) => (
                                 <option key={emp.id} value={emp.id}>
                                     {emp.name}
@@ -135,7 +135,7 @@ export default function EmployeeLoginPage() {
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2 text-center">
-                                    Enter PIN
+                                    {t('login.enterPin')}
                                 </label>
                                 <div className="flex justify-center gap-3 mb-4">
                                     {[0, 1, 2, 3].map((i) => (
@@ -168,7 +168,7 @@ export default function EmployeeLoginPage() {
                                     disabled={loading}
                                     className="h-16 rounded-lg bg-red-100 hover:bg-red-200 active:bg-red-300 text-sm font-medium text-red-700 transition-colors disabled:opacity-50"
                                 >
-                                    Clear
+                                    {t('login.clear')}
                                 </button>
                                 <button
                                     onClick={() => handlePinClick('0')}
@@ -191,7 +191,7 @@ export default function EmployeeLoginPage() {
                             {loading && (
                                 <div className="text-center text-sm text-slate-600">
                                     <Lock className="w-5 h-5 mx-auto mb-2 animate-pulse" />
-                                    Logging in...
+                                    {t('login.loggingIn')}
                                 </div>
                             )}
                         </>

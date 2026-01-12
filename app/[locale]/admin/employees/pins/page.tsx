@@ -31,7 +31,7 @@ export default function EmployeePinsPage() {
         try {
             const res = await fetch('/api/admin/users');
             const data = await res.json();
-            const employeeUsers = data.filter((u: any) => u.role === 'employee');
+            const employeeUsers = data.filter((u: any) => u.role?.toLowerCase() === 'employee');
             setEmployees(employeeUsers);
         } catch (error) {
             console.error('Error fetching employees:', error);

@@ -61,6 +61,21 @@
         "backToDashboard": "Back to Dashboard",
         "lastScanned": "Last Scanned",
         "processItem": "Process Item",
+        "login": {
+            "title": "Employee Login",
+            "selectEmployee": "Select Employee",
+            "chooseName": "Choose your name...",
+            "enterPin": "Enter PIN",
+            "clear": "Clear",
+            "loggingIn": "Logging in...",
+            "invalidPin": "Invalid PIN. Please try again.",
+            "selectEmployeeError": "Please select an employee",
+            "enterFullPin": "Please enter a 4-digit PIN"
+        },
+        "shifts": {
+            "title": "My Shifts",
+            "description": "View your upcoming work schedule"
+        },
         "expenses": {
             "title": "Submit Expense",
             "subtitle": "Upload receipts and submit claims",
@@ -136,7 +151,8 @@
         "confirm": "Confirm",
         "close": "Close",
         "saveFailed": "Failed to save. Please try again.",
-        "switchLanguage": "Switch Language"
+        "switchLanguage": "Switch Language",
+        "signOut": "Sign Out"
     },
     "Product": {
         "addProduct": "Add Product",

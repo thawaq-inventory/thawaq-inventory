@@ -11,18 +11,23 @@ export async function GET() {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Verify user is super admin or admin
+        // Verify user session exists
         const sessionData = await prisma.session.findUnique({
             where: { token: authToken.value },
             include: { user: true },
         });
 
-        if (!sessionData?.user.isSuperAdmin && sessionData?.user.role !== 'ADMIN') {
-            return NextResponse.json(
-                { error: 'Unauthorized access to branch management' },
-                { status: 403 }
-            );
+        if (!sessionData) {
+            return NextResponse.json({ error: 'Session not found' }, { status: 401 });
         }
+
+        // Allow admins, super admins, and employees to view branches
+        // (employees need to see branches for forms, but only admins can manage)
+        const userRole = sessionData.user.role?.toUpperCase();
+        const isAdmin = userRole === 'ADMIN' || sessionData.user.isSuperAdmin;
+
+        // All authenticated users can view branches
+        // (for employee assignment, clock-in, etc.)
 
         // Fetch all branches with counts
         const branches = await prisma.branch.findMany({

@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user
+        // Create user - set branchId to first branch if provided
+        const primaryBranchId = (branchIds && Array.isArray(branchIds) && branchIds.length > 0) ? branchIds[0] : null;
+
         const user = await prisma.user.create({
             data: {
                 username: username.toLowerCase(),
@@ -115,6 +117,7 @@ export async function POST(request: NextRequest) {
                 cliqAlias: cliqAlias || null,
                 hourlyRate: hourlyRate || 5.0,
                 isSuperAdmin: isSuperAdmin || false,
+                branchId: primaryBranchId, // Set legacy branchId for clock-in support
             }
         });
 

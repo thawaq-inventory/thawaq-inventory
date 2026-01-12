@@ -20,16 +20,14 @@ import {
     LogOut,
     BookOpen,
     Trash2,
-    Flame,
     Target,
-    ChefHat,
     Store,
     DollarSign,
     Receipt,
-    Tag,
     Calendar,
     Building2,
-    Shield
+    Shield,
+    Clock
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -74,14 +72,9 @@ export function AdminLayoutClient({
         );
     };
 
-    const handleLogout = async () => {
-        try {
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = '/en/admin/login';
-        } catch (error) {
-            console.error('Logout failed', error);
-            window.location.href = '/en/admin/login';
-        }
+    const handleLogout = () => {
+        // Navigate to logout page which handles the API call and redirect
+        window.location.href = `/${locale}/admin/logout`;
     };
 
     return (
@@ -100,12 +93,7 @@ export function AdminLayoutClient({
                         {t('dashboard')}
                     </NavLink>
 
-                    {/* Recipes */}
-                    <NavLink href="/admin/recipes" icon={ChefHat}>
-                        Recipes
-                    </NavLink>
-
-                    {/* Operations Section */}
+                    {/* ===== SECTION 1: OPERATIONS ===== */}
                     <div className="pt-4 pb-2">
                         <div className="px-3 mb-2">
                             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -117,86 +105,11 @@ export function AdminLayoutClient({
                             Waste Management
                         </NavLink>
 
-                        <NavLink href="/admin/production" icon={Flame}>
-                            Production Log
-                        </NavLink>
-
                         <NavLink href="/admin/par-levels" icon={Target}>
                             Par Levels
                         </NavLink>
-                    </div>
 
-                    {/* Accounting Section */}
-                    <div className="pt-4 pb-2">
-                        <div className="px-3 mb-2">
-                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                {t('accounting')}
-                            </h3>
-                        </div>
-
-                        <NavLink href="/admin/accounting/journal" icon={FileText}>
-                            {t('journalEntries')}
-                        </NavLink>
-
-                        <NavLink href="/admin/accounting/invoices" icon={FileText}>
-                            {t('invoices')}
-                        </NavLink>
-
-                        <NavLink href="/admin/accounting/reports" icon={TrendingUp}>
-                            {t('plReports')}
-                        </NavLink>
-
-                        <NavLink href="/admin/accounting/accounts" icon={BookOpen}>
-                            {t('chartOfAccounts')}
-                        </NavLink>
-
-
-                        <NavLink href="/admin/accounting/vendors" icon={Users}>
-                            {t('vendors')}
-                        </NavLink>
-
-                        <NavLink href="/admin/expenses" icon={Receipt}>
-                            Expenses
-                        </NavLink>
-
-                        <NavLink href="/admin/expenses/categories" icon={Tag}>
-                            Expense Categories
-                        </NavLink>
-                    </div>
-
-                    {/* Employees Section */}
-                    <div className="pt-4 pb-2">
-                        <div className="px-3 mb-2">
-                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Employees
-                            </h3>
-                        </div>
-
-                        <NavLink href="/admin/users" icon={Shield}>
-                            All Users
-                        </NavLink>
-
-                        <NavLink href="/admin/employees" icon={Users}>
-                            Manage Employees
-                        </NavLink>
-
-                        <NavLink href="/admin/roster" icon={Calendar}>
-                            Shifts Roster
-                        </NavLink>
-
-                        <NavLink href="/admin/payroll/approvals" icon={DollarSign}>
-                            Payroll Approvals
-                        </NavLink>
-                    </div>
-
-                    {/* Inventory Section (Collapsible) */}
-                    <div className="pt-4">
-                        <div className="px-3 mb-2">
-                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                {t('inventory')}
-                            </h3>
-                        </div>
-
+                        {/* Inventory Submenu */}
                         <button
                             onClick={() => setInventoryOpen(!inventoryOpen)}
                             className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-colors"
@@ -230,20 +143,57 @@ export function AdminLayoutClient({
                         )}
                     </div>
 
-                    {/* Analytics Section */}
+                    {/* ===== SECTION 2: ACCOUNTING ===== */}
                     <div className="pt-4 pb-2">
                         <div className="px-3 mb-2">
                             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Analytics
+                                {t('accounting')}
                             </h3>
                         </div>
 
-                        <NavLink href="/admin/analytics/food-cost" icon={DollarSign}>
-                            Food Cost %
+                        <NavLink href="/admin/accounting/journal" icon={FileText}>
+                            {t('journalEntries')}
+                        </NavLink>
+
+                        <NavLink href="/admin/accounting/reports" icon={TrendingUp}>
+                            {t('plReports')}
+                        </NavLink>
+
+                        <NavLink href="/admin/accounting/accounts" icon={BookOpen}>
+                            {t('chartOfAccounts')}
+                        </NavLink>
+
+                        <NavLink href="/admin/expenses" icon={Receipt}>
+                            Expenses
                         </NavLink>
                     </div>
 
-                    {/* Settings Section */}
+                    {/* ===== SECTION 3: EMPLOYEES ===== */}
+                    <div className="pt-4 pb-2">
+                        <div className="px-3 mb-2">
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                Employees
+                            </h3>
+                        </div>
+
+                        <NavLink href="/admin/employees" icon={Users}>
+                            Manage Employees
+                        </NavLink>
+
+                        <NavLink href="/admin/roster" icon={Calendar}>
+                            Shifts Roster
+                        </NavLink>
+
+                        <NavLink href="/admin/attendance" icon={Clock}>
+                            Attendance
+                        </NavLink>
+
+                        <NavLink href="/admin/payroll/approvals" icon={DollarSign}>
+                            Payroll Approvals
+                        </NavLink>
+                    </div>
+
+                    {/* ===== SECTION 4: SETTINGS ===== */}
                     <div className="pt-4 pb-2">
                         <div className="px-3 mb-2">
                             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -251,12 +201,20 @@ export function AdminLayoutClient({
                             </h3>
                         </div>
 
-                        <NavLink href="/admin/locations" icon={Store}>
-                            Locations
+                        <NavLink href="/admin/users" icon={Shield}>
+                            All Users
                         </NavLink>
 
                         <NavLink href="/admin/branches" icon={Building2}>
                             Branches
+                        </NavLink>
+
+                        <NavLink href="/admin/locations" icon={Store}>
+                            Locations
+                        </NavLink>
+
+                        <NavLink href="/admin/settings" icon={Settings}>
+                            General Settings
                         </NavLink>
                     </div>
                 </nav>

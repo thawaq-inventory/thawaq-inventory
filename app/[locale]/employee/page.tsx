@@ -1,24 +1,41 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from "@/i18n/routing";
-import { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, ClipboardList, Scan, ArrowRight, Receipt, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Package, ClipboardList, Scan, ArrowRight, Receipt, Calendar, Clock, LogOut, User } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export default function EmployeeLanding() {
     const t = useTranslations('Employee');
+    const tCommon = useTranslations('Common');
     const router = useRouter();
+    const [employeeName, setEmployeeName] = useState<string>('');
 
-    // Check authentication
+    // Check authentication and get employee name
     useEffect(() => {
         const session = localStorage.getItem('employeeSession');
         if (!session) {
             router.push('/employee/login');
+            return;
+        }
+
+        try {
+            const data = JSON.parse(session);
+            setEmployeeName(data.name || 'Employee');
+        } catch (err) {
+            console.error('Error parsing session:', err);
+            router.push('/employee/login');
         }
     }, [router]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('employeeSession');
+        router.push('/employee/login');
+    };
 
     const tasks = [
         {
@@ -40,10 +57,16 @@ export default function EmployeeLanding() {
             href: '/employee/expenses',
         },
         {
-            title: 'My Shifts',
-            description: 'View your upcoming work schedule',
+            title: t('shifts.title'),
+            description: t('shifts.description'),
             icon: Calendar,
             href: '/employee/shifts',
+        },
+        {
+            title: t('timesheet.title'),
+            description: t('timesheet.clockIn'),
+            icon: Clock,
+            href: '/employee/timesheet',
         },
         {
             title: t('scanItem'),
@@ -54,22 +77,44 @@ export default function EmployeeLanding() {
     ];
 
     return (
-        <div className="min-h-screen p-6 flex items-center justify-center bg-slate-50">
+        <div className="min-h-screen p-6 bg-slate-50">
+            {/* Header Bar */}
+            <header className="max-w-2xl mx-auto mb-8">
+                <div className="flex items-center justify-between">
+                    {/* Left side - User info */}
+                    <div className="flex items-center gap-2 text-slate-600">
+                        <User className="w-5 h-5" />
+                        <span className="font-medium">{employeeName}</span>
+                    </div>
+
+                    {/* Right side - Language and Logout */}
+                    <div className="flex items-center gap-3">
+                        <LanguageSwitcher />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleLogout}
+                            className="text-slate-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            {tCommon('signOut') || 'Logout'}
+                        </Button>
+                    </div>
+                </div>
+            </header>
+
             <div className="max-w-2xl w-full mx-auto">
-                <header className="mb-12 text-center">
-                    <div className="mb-8 flex justify-center relative">
+                <div className="mb-12 text-center">
+                    <div className="mb-8 flex justify-center">
                         <Link href="/employee">
                             <Logo size="xl" />
                         </Link>
-                        <div className="absolute right-0 top-0">
-                            <LanguageSwitcher />
-                        </div>
                     </div>
                     <h1 className="text-2xl font-bold mb-2 text-slate-900">
                         {t('chooseTask')}
                     </h1>
                     <p className="text-slate-500">{t('selectTaskDesc')}</p>
-                </header>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {tasks.map((task) => {
