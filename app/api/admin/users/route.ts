@@ -11,8 +11,19 @@ export async function GET(request: NextRequest) {
         // Get branch filter from cookies
         const branchFilter = await getBranchFilterForAPI();
 
+        // Build where clause to include super admins OR users matching branch filter
+        // Super admins should always be visible regardless of branch filter
+        const whereClause = Object.keys(branchFilter).length > 0
+            ? {
+                OR: [
+                    { isSuperAdmin: true },  // Always include super admins
+                    branchFilter              // Include users matching branch filter
+                ]
+            }
+            : {}; // No filter if branchFilter is empty
+
         const users = await prisma.user.findMany({
-            where: branchFilter,
+            where: whereClause,
             select: {
                 id: true,
                 name: true,
