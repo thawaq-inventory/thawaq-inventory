@@ -10,4 +10,5 @@ FINAL_TROUBLESHOOTING.md
 scripts
 *.pkg
 backend
+.node_bin
 create-test-payroll.js
