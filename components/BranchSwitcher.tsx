@@ -37,8 +37,6 @@ export default function BranchSwitcher({ userBranchId, isSuperAdmin }: BranchSwi
             }
             const data = await res.json();
             // Ensure data is an array before filtering
-            const data = await res.json();
-            // Ensure data is an array before filtering
             if (Array.isArray(data)) {
                 let activeBranches = data.filter((b: Branch) => b.isActive);
 
