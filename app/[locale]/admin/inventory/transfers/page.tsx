@@ -13,6 +13,7 @@ import {
 
 import TransferList from './components/TransferList';
 import NewTransferDialog from './components/NewTransferDialog';
+import ReceiveStockDialog from './components/ReceiveStockDialog';
 
 export default function TransfersPage() {
     const t = useTranslations('Admin');
@@ -118,6 +119,10 @@ export default function TransfersPage() {
                         Refresh
                     </Button>
                     <NewTransferDialog
+                        currentBranchId={currentBranchId}
+                        onSuccess={fetchTransfers}
+                    />
+                    <ReceiveStockDialog
                         currentBranchId={currentBranchId}
                         onSuccess={fetchTransfers}
                     />
