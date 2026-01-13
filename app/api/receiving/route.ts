@@ -62,11 +62,23 @@ export async function POST(request: NextRequest) {
                 select: { branchId: true }
             });
 
+            const targetBranchId = updatedProduct.branchId || locationId;
+
+            if (!targetBranchId) {
+                // Skip log? Or Log with null? InventoryLog.branchId is required.
+                // If we can't determine branch, we can't log properly. 
+                // But preventing the whole transaction might be bad if legacy data is loose.
+                // However, for type safety, we need string.
+                // Assuming locationId is provided for receiving operations.
+                console.warn(`Skipping InventoryLog for product ${item.productId}: No Branch Context`);
+                continue;
+            }
+
             // Create inventory log
             await prisma.inventoryLog.create({
                 data: {
                     productId: item.productId,
-                    branchId: updatedProduct.branchId,
+                    branchId: targetBranchId,
                     changeAmount: item.quantity,
                     reason: 'RESTOCK',
                     userId: userId || null,

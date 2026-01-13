@@ -32,6 +32,16 @@ export async function POST(request: NextRequest) {
 
         const costImpact = product.cost * quantity;
 
+        // Determine Branch Context
+        // If Global Product (branchId null), fallback to locationId (if passed) or body.branchId?
+        // Body has locationId. Assuming locationId maps to Branch or IS the Branch ID context.
+        const targetBranchId = product.branchId || locationId;
+
+        if (!targetBranchId) {
+            console.error('Waste Log failed: No Branch Context for Global Product');
+            return NextResponse.json({ error: 'Branch Context required for Global Product waste' }, { status: 400 });
+        }
+
         // Create waste log
         const wasteLog = await prisma.wasteLog.create({
             data: {
@@ -39,7 +49,7 @@ export async function POST(request: NextRequest) {
                 quantity,
                 reason,
                 costImpact,
-                branchId: product.branchId,
+                branchId: targetBranchId,
                 notes: notes || null,
                 locationId: locationId || null,
                 userId: userId || null,
@@ -65,7 +75,7 @@ export async function POST(request: NextRequest) {
         await prisma.inventoryLog.create({
             data: {
                 productId,
-                branchId: product.branchId,
+                branchId: targetBranchId,
                 changeAmount: -quantity,
                 reason: 'WASTE',
                 userId: userId || null,
