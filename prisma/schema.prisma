@@ -114,6 +114,8 @@ model Product {
   // Inventory
   stockLevel  Float    @default(0)
   unit        String   @default("UNIT") // kg, pcs, etc.
+  purchaseUnit     String?  // e.g. "Case", "Sack"
+  conversionFactor Float    @default(1) // e.g. 24 cans per case
   minStock    Float    @default(0) // Reorder point
   maxStock    Float    @default(0) // Par level maximum
   
