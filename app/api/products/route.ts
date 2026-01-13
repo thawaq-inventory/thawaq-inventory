@@ -2,40 +2,74 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getBranchFilterForAPI } from '@/lib/branchFilter';
 
+// GET /api/products
+// Returns products with stock levels for the specific branch context
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
         const search = searchParams.get('search');
-        const sku = searchParams.get('sku');
 
-        // Get branch filter from cookies
+        // Context: Which branch are we viewing?
         const branchFilter = await getBranchFilterForAPI();
 
-        if (sku) {
-            const product = await prisma.product.findUnique({
-                where: { sku: sku }
-            });
-            return NextResponse.json(product ? [product] : []);
+        // Extract the explicit branch ID from the filter if possible
+        // The filter usually returns { branchId: '...' } or { branchId: { in: [...] } } or {}
+        // For the Left Join logic, we need a specific "View Context Branch".
+        // If the user is a Superadmin looking at "All", we might sum them up?
+        // But the critical bug is for "Branch Admin" seeing nothing.
+        // Let's rely on the cookie 'selectedBranches' directly to get the "Current View Context".
+
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const selectedBranchesCookie = cookieStore.get('selectedBranches');
+
+        let currentBranchId = null;
+        if (selectedBranchesCookie) {
+            const branches = JSON.parse(selectedBranchesCookie.value);
+            if (branches && branches.length > 0 && branches[0] !== 'all') {
+                currentBranchId = branches[0];
+            }
         }
 
-        const whereClause: any = {
-            ...branchFilter,
-        };
-
+        // Base Query: Fetch Products
+        const whereClause: any = {};
         if (search) {
             whereClause.OR = [
-                { name: { contains: search } },
-                { sku: { contains: search } },
-                { description: { contains: search } },
+                { name: { contains: search, mode: 'insensitive' } },
+                { sku: { contains: search, mode: 'insensitive' } },
             ];
         }
 
+        // We do NOT filter products by branchId anymore, because Products are global catalog items.
+        // We only filter the included InventoryLevel.
+
         const products = await prisma.product.findMany({
             where: whereClause,
+            include: {
+                // effective Left Join
+                inventoryLevels: {
+                    where: { branchId: currentBranchId || 'undefined_branch' }, // Empty if no branch selected
+                    take: 1
+                }
+            },
             orderBy: { name: 'asc' }
         });
-        return NextResponse.json(products);
+
+        // Transform result to match expected frontend interface
+        const mappedProducts = products.map(p => {
+            const level = p.inventoryLevels[0];
+            return {
+                ...p,
+                // Override legacy stockLevel with the actual InventoryLevel for this branch
+                stockLevel: level ? level.quantityOnHand : 0,
+                // Include other fields if needed
+                reorderPoint: level ? level.reorderPoint : 0
+            };
+        });
+
+        return NextResponse.json(mappedProducts);
     } catch (error) {
+        console.error('Failed to fetch products:', error);
         return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
     }
 }
@@ -44,53 +78,66 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        // Get branchId from request body or from selected branches cookie
-        let branchId = body.branchId;
+        // Branch Strategy:
+        // 1. If `availableToAllBranches` is TRUE, we create a GLOBAL product (branchId = null).
+        // 2. If `branchId` is provided explicitly, we tie it to that branch (Legacy / Local Special).
+        // 3. If neither, we default to GLOBAL (preferred new architecture).
 
-        if (!branchId) {
-            // Get selected branches from cookies
-            const { cookies } = await import('next/headers');
-            const cookieStore = await cookies();
-            const selectedBranchesCookie = cookieStore.get('selectedBranches');
+        let targetBranchId: string | null = null;
+        let isGlobal = false;
 
-            if (selectedBranchesCookie) {
-                try {
-                    const selectedBranches = JSON.parse(decodeURIComponent(selectedBranchesCookie.value));
-                    // Use first selected branch that isn't 'all'
-                    branchId = selectedBranches.find((b: string) => b !== 'all');
-                } catch (e) {
-                    console.error('Error parsing selectedBranches cookie:', e);
-                }
-            }
-
-            // If still no branchId, try to get the first active branch
-            if (!branchId) {
-                const { prisma: prismaClient } = await import('@/lib/prisma');
-                const firstBranch = await prismaClient.branch.findFirst({
-                    where: { isActive: true },
-                    select: { id: true }
-                });
-                branchId = firstBranch?.id;
-            }
+        if (body.availableToAllBranches || !body.branchId) {
+            isGlobal = true;
+            targetBranchId = null; // Explicitly null for global
+        } else {
+            targetBranchId = body.branchId;
         }
 
-        if (!branchId) {
-            return NextResponse.json({ error: 'No branch available. Please create a branch first.' }, { status: 400 });
+        // Validate basic fields
+        if (!body.name) {
+            return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
         }
 
+        // Create the Product
         const product = await prisma.product.create({
             data: {
                 name: body.name,
                 sku: body.sku,
                 description: body.description,
-                branchId: branchId,
-                stockLevel: body.stockLevel || 0,
+                branchId: targetBranchId, // Could be null
+                stockLevel: 0, // Legacy field, kept 0
                 unit: body.unit || 'UNIT',
                 minStock: body.minStock || 0,
                 cost: body.cost || 0,
                 price: body.price || 0,
             }
         });
+
+        // Auto-Seed Inventory Levels
+        // If Global, seed for ALL active branches.
+        // If specific branch, seed for THAT branch.
+
+        const activeBranches = await prisma.branch.findMany({
+            where: { isActive: true },
+            select: { id: true }
+        });
+
+        const branchesToSeed = isGlobal
+            ? activeBranches.map(b => b.id)
+            : (targetBranchId ? [targetBranchId] : []);
+
+        if (branchesToSeed.length > 0) {
+            await prisma.inventoryLevel.createMany({
+                data: branchesToSeed.map(bId => ({
+                    productId: product.id,
+                    branchId: bId,
+                    quantityOnHand: 0,
+                    reorderPoint: body.minStock || 0
+                })),
+                skipDuplicates: true
+            });
+        }
+
         return NextResponse.json(product, { status: 201 });
     } catch (error) {
         console.error('Error creating product:', error);

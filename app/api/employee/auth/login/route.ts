@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
                 pinCode: true,
                 role: true,
                 isActive: true,
+                isSuperAdmin: true,
             },
         });
 
@@ -154,7 +155,9 @@ export async function POST(request: NextRequest) {
             id: employee.id,
             name: employee.name,
             username: employee.username,
-            branchId: finalBranchId
+            branchId: finalBranchId,
+            role: employee.role,
+            isSuperAdmin: employee.isSuperAdmin || false
         });
 
         if (finalBranchId) {

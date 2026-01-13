@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
+import { EmployeeBranchSwitcher } from "../_components/EmployeeBranchSwitcher";
 
 export default function EmployeeFeaturesLayout({
     children,
@@ -55,6 +56,7 @@ export default function EmployeeFeaturesLayout({
                                 <span className="text-sm font-medium text-slate-700">{employeeName}</span>
                             </div>
                         )}
+                        <EmployeeBranchSwitcher />
                         <button
                             onClick={handleLogout}
                             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"

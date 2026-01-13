@@ -107,8 +107,9 @@ model Product {
   description String?
   
   // Branch assignment
-  branch      Branch   @relation(fields: [branchId], references: [id])
-  branchId    String
+  // Branch assignment (Optional for Global Products)
+  branch      Branch?   @relation(fields: [branchId], references: [id])
+  branchId    String?
   
   // Inventory
   stockLevel  Float    @default(0)

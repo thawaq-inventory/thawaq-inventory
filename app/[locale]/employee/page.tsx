@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Package, ClipboardList, ArrowRight, Receipt, Calendar, Clock, LogOut, User } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { EmployeeBranchSwitcher } from "./_components/EmployeeBranchSwitcher";
 
 export default function EmployeeLanding() {
     const t = useTranslations('Employee');
@@ -83,6 +84,7 @@ export default function EmployeeLanding() {
 
                     {/* Right side - Language and Logout */}
                     <div className="flex items-center gap-3">
+                        <EmployeeBranchSwitcher />
                         <LanguageSwitcher />
                         <Button
                             variant="ghost"
