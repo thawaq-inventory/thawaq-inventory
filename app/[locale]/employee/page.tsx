@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Link, useRouter } from "@/i18n/routing";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, ClipboardList, Scan, ArrowRight, Receipt, Calendar, Clock, LogOut, User } from "lucide-react";
+import { Package, ClipboardList, ArrowRight, Receipt, Calendar, Clock, LogOut, User } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -39,22 +39,10 @@ export default function EmployeeLanding() {
 
     const tasks = [
         {
-            title: t('receiveStock'),
-            description: t('receiveStockDesc'),
-            icon: Package,
-            href: '/employee/receiving',
-        },
-        {
-            title: t('stockCount'),
-            description: t('stockCountDesc'),
-            icon: ClipboardList,
-            href: '/employee/count',
-        },
-        {
-            title: t('expenses.title'),
-            description: t('expenses.subtitle'),
-            icon: Receipt,
-            href: '/employee/expenses',
+            title: t('timesheet.title'),
+            description: t('timesheet.clockIn'),
+            icon: Clock,
+            href: '/employee/timesheet',
         },
         {
             title: t('shifts.title'),
@@ -63,16 +51,22 @@ export default function EmployeeLanding() {
             href: '/employee/shifts',
         },
         {
-            title: t('timesheet.title'),
-            description: t('timesheet.clockIn'),
-            icon: Clock,
-            href: '/employee/timesheet',
+            title: t('receiveStock'),
+            description: t('receiveStockDesc'),
+            icon: Package,
+            href: '/employee/receiving',
         },
         {
-            title: t('scanItem'),
-            description: t('scanItemDesc'),
-            icon: Scan,
-            href: '/employee/scan',
+            title: t('expenses.title'),
+            description: t('expenses.subtitle'),
+            icon: Receipt,
+            href: '/employee/expenses',
+        },
+        {
+            title: t('stockCount'),
+            description: t('stockCountDesc'),
+            icon: ClipboardList,
+            href: '/employee/count',
         }
     ];
 

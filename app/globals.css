@@ -388,3 +388,78 @@ select:focus-visible {
   background-size: 1000px 100%;
   animation: shimmer 2s infinite;
 }
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile-first responsive tables */
+.responsive-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+
+  /* Stack grids on mobile */
+  .admin-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .admin-charts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Make tables horizontally scrollable on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce padding on mobile */
+  .mobile-compact {
+    padding: 0.75rem !important;
+  }
+
+  /* Stack form fields on mobile */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Smaller text on mobile */
+  .mobile-text-sm {
+    font-size: 0.875rem !important;
+  }
+
+  /* Full width buttons on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  /* Hide on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 639px) {
+
+  /* Extra small screens */
+  .admin-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Smaller card padding */
+  .dashboard-card {
+    padding: 1rem;
+  }
+}
+
+/* Show only on mobile */
+@media (min-width: 768px) {
+  .show-mobile-only {
+    display: none !important;
+  }
+}

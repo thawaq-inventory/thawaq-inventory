@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Logo } from "@/components/ui/logo";
 import BranchSwitcher from "@/components/BranchSwitcher";
@@ -27,7 +27,9 @@ import {
     Calendar,
     Building2,
     Shield,
-    Clock
+    Clock,
+    Menu,
+    X
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -43,6 +45,12 @@ export function AdminLayoutClient({
     const t = useTranslations('Admin');
     const pathname = usePathname();
     const [inventoryOpen, setInventoryOpen] = useState(pathname?.includes('/inventory'));
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Close mobile menu on route change
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [pathname]);
 
     // If on login page, render without admin layout
     if (pathname?.includes('/login')) {
@@ -79,12 +87,34 @@ export function AdminLayoutClient({
 
     return (
         <div className="flex min-h-screen bg-slate-50">
+            {/* Mobile Menu Overlay */}
+            {mobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 z-50">
-                <div className="h-20 flex items-center justify-center border-b border-slate-100">
+            <aside className={`
+                w-64 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 z-50
+                transition-transform duration-300 ease-in-out
+                ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+                md:translate-x-0
+            `}>
+                <div className="h-20 flex items-center justify-between px-4 border-b border-slate-100">
                     <Link href="/admin">
                         <Logo size="md" />
                     </Link>
+                    {/* Close button - mobile only */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="md:hidden h-10 w-10 text-slate-500"
+                    >
+                        <X className="w-5 h-5" />
+                    </Button>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -243,22 +273,31 @@ export function AdminLayoutClient({
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 pl-64 flex flex-col min-h-screen">
+            <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
                 {/* Header Bar */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
                     <div className="flex items-center gap-4">
+                        {/* Hamburger Menu - Mobile only */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMobileMenuOpen(true)}
+                            className="md:hidden h-10 w-10 text-slate-600"
+                        >
+                            <Menu className="w-6 h-6" />
+                        </Button>
                         <BranchSwitcher
                             userBranchId={null}
                             isSuperAdmin={true}
                         />
                     </div>
                     <div className="flex items-center gap-4">
-                        <p className="text-sm text-slate-600">Welcome back, Admin</p>
+                        <p className="text-sm text-slate-600 hidden sm:block">Welcome back, Admin</p>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-8">
+                <main className="flex-1 p-4 md:p-8">
                     {children}
                 </main>
             </div>

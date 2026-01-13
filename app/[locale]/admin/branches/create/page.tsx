@@ -2,13 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, Link as LinkIcon, Check, AlertCircle } from 'lucide-react';
+import { parseGoogleMapsUrl, formatCoordinates, Coordinates } from '@/lib/googleMapsParser';
 
 export default function CreateBranchPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [gettingLocation, setGettingLocation] = useState(false);
     const [error, setError] = useState('');
+    const [googleMapsLink, setGoogleMapsLink] = useState('');
+    const [parsedCoords, setParsedCoords] = useState<Coordinates | null>(null);
+    const [linkError, setLinkError] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         code: '',
@@ -19,6 +23,32 @@ export default function CreateBranchPage() {
         longitude: '',
         geoRadius: '200',
     });
+
+    // Handle Google Maps link input
+    const handleGoogleMapsLink = (value: string) => {
+        setGoogleMapsLink(value);
+        setLinkError('');
+
+        if (!value.trim()) {
+            setParsedCoords(null);
+            setFormData(prev => ({ ...prev, latitude: '', longitude: '' }));
+            return;
+        }
+
+        const coords = parseGoogleMapsUrl(value);
+        if (coords) {
+            setParsedCoords(coords);
+            setFormData(prev => ({
+                ...prev,
+                latitude: coords.latitude.toFixed(6),
+                longitude: coords.longitude.toFixed(6)
+            }));
+            setLinkError('');
+        } else {
+            setParsedCoords(null);
+            setLinkError('Could not extract coordinates from this link. Please paste a valid Google Maps link.');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,11 +101,15 @@ export default function CreateBranchPage() {
         setGettingLocation(true);
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                const lat = position.coords.latitude.toFixed(6);
+                const lng = position.coords.longitude.toFixed(6);
                 setFormData({
                     ...formData,
-                    latitude: position.coords.latitude.toFixed(6),
-                    longitude: position.coords.longitude.toFixed(6)
+                    latitude: lat,
+                    longitude: lng
                 });
+                setParsedCoords({ latitude: parseFloat(lat), longitude: parseFloat(lng) });
+                setGoogleMapsLink(`https://maps.google.com/?q=${lat},${lng}`);
                 setGettingLocation(false);
             },
             (error) => {
@@ -216,41 +250,40 @@ export default function CreateBranchPage() {
                             Clock-In Location
                         </h2>
                         <p className="text-sm text-gray-500 mb-4">
-                            Set the GPS coordinates for this branch. Employees must be within the specified radius to clock in.
+                            Paste a Google Maps link for this branch location. Employees must be within the specified radius to clock in.
                             If not set, employees can clock in from anywhere.
                         </p>
 
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Latitude */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Latitude
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={formData.latitude}
-                                        onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-                                        placeholder="e.g., 31.9539"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
-
-                                {/* Longitude */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Longitude
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="any"
-                                        value={formData.longitude}
-                                        onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-                                        placeholder="e.g., 35.9106"
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
+                            {/* Google Maps Link Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <LinkIcon className="w-4 h-4 inline mr-1" />
+                                    Google Maps Link
+                                </label>
+                                <input
+                                    type="url"
+                                    value={googleMapsLink}
+                                    onChange={(e) => handleGoogleMapsLink(e.target.value)}
+                                    placeholder="Paste Google Maps link here (e.g., https://maps.google.com/?q=31.9539,35.9106)"
+                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${linkError ? 'border-red-300 bg-red-50' : parsedCoords ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                                        }`}
+                                />
+                                {linkError && (
+                                    <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                                        <AlertCircle className="w-4 h-4" />
+                                        {linkError}
+                                    </p>
+                                )}
+                                {parsedCoords && (
+                                    <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                        <Check className="w-4 h-4" />
+                                        Coordinates detected: {formatCoordinates(parsedCoords)}
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Open Google Maps, find the location, click "Share" and copy the link
+                                </p>
                             </div>
 
                             {/* Use Current Location Button */}
@@ -265,7 +298,7 @@ export default function CreateBranchPage() {
                                 ) : (
                                     <MapPin className="w-4 h-4" />
                                 )}
-                                {gettingLocation ? 'Getting location...' : 'Use Current Location'}
+                                {gettingLocation ? 'Getting location...' : 'Or Use Current Location'}
                             </button>
 
                             {/* Radius */}
