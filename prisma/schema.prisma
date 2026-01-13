@@ -199,6 +199,17 @@ model Account {
   expenseCategoriesCredit ExpenseCategory[] @relation("ExpenseCreditAccount")
   expensesDebit   Expense[] @relation("ExpenseDebit")
   expensesCredit  Expense[] @relation("ExpenseCredit")
+  mappings        AccountingMapping[]
+}
+
+model AccountingMapping {
+  id        String   @id @default(uuid())
+  eventKey  String   @unique // e.g. "WASTE_EXPENSE", "SALES_FOOD"
+  account   Account  @relation(fields: [accountId], references: [id])
+  accountId String
+  
+  description String?
+  updatedAt DateTime @updatedAt
 }
 
 model JournalEntry {
