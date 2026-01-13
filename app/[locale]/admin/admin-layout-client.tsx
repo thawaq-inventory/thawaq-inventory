@@ -46,6 +46,32 @@ export function AdminLayoutClient({
     const pathname = usePathname();
     const [inventoryOpen, setInventoryOpen] = useState(pathname?.includes('/inventory'));
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [userName, setUserName] = useState<string>('');
+    const [userInitials, setUserInitials] = useState<string>('AD');
+
+    // Fetch logged-in user info
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user?.name) {
+                        setUserName(data.user.name);
+                        // Create initials from name
+                        const nameParts = data.user.name.split(' ');
+                        const initials = nameParts.length > 1
+                            ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+                            : nameParts[0].substring(0, 2);
+                        setUserInitials(initials.toUpperCase());
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch user info:', error);
+            }
+        };
+        fetchUser();
+    }, []);
 
     // Close mobile menu on route change
     useEffect(() => {
@@ -252,10 +278,10 @@ export function AdminLayoutClient({
                 <div className="p-4 border-t border-slate-100">
                     <div className="flex items-center gap-3 px-3 py-3 mb-2">
                         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                            AD
+                            {userInitials}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 truncate">{t('adminUser')}</p>
+                            <p className="text-sm font-medium text-slate-900 truncate">{userName || t('adminUser')}</p>
                             <p className="text-xs text-slate-500 truncate">{t('adminEmail')}</p>
                         </div>
                         <LanguageSwitcher />
@@ -292,7 +318,7 @@ export function AdminLayoutClient({
                         />
                     </div>
                     <div className="flex items-center gap-4">
-                        <p className="text-sm text-slate-600 hidden sm:block">Welcome back, Admin</p>
+                        <p className="text-sm text-slate-600 hidden sm:block">Welcome back, {userName || 'Admin'}</p>
                     </div>
                 </header>
 
