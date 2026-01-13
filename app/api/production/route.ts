@@ -27,6 +27,28 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Output product not found' }, { status: 404 });
         }
 
+        // Determine Branch Context for Inventory Logs
+        // 1. Try Product's fixed branch (Legacy)
+        // 2. Try request body branchId (New Global Context)
+        // 3. Fallback: If locationId is provided, should we fetch branch? 
+        //    (Skipping for now to keep it efficient, assume client sends branchId or product has it)
+
+        let targetBranchId: string | null = product.branchId;
+
+        if (!targetBranchId) {
+            // Global Product - Requirement: branchId MUST be in body
+            targetBranchId = (body.branchId as string) || null;
+        }
+
+        // If we still have no branch ID, we cannot log inventory efficiently. 
+        // Critical Error for Global Products.
+        if (!targetBranchId) {
+            // Try to fetch first active branch as emergency fallback? 
+            // Or fail. Validating context is better.
+            return NextResponse.json({ error: 'Branch Context (branchId) is required for Global Products production.' }, { status: 400 });
+        }
+
+
         const batch = await prisma.productionBatch.create({
             data: {
                 recipeId: recipeId || null,
@@ -71,7 +93,7 @@ export async function POST(request: NextRequest) {
             await prisma.inventoryLog.create({
                 data: {
                     productId: ing.productId,
-                    branchId: product.branchId,
+                    branchId: targetBranchId,
                     changeAmount: -ing.quantityUsed,
                     reason: 'PRODUCTION',
                     userId: userId || null,
@@ -93,7 +115,7 @@ export async function POST(request: NextRequest) {
         await prisma.inventoryLog.create({
             data: {
                 productId: outputProductId,
-                branchId: product.branchId,
+                branchId: targetBranchId,
                 changeAmount: quantityProduced,
                 reason: 'PRODUCTION',
                 userId: userId || null,
