@@ -20,7 +20,13 @@ export async function POST(request: NextRequest) {
 
         // Find user by username
         const user = await prisma.user.findUnique({
-            where: { username: username.toLowerCase() }
+            where: { username: username.toLowerCase() },
+            include: {
+                branch: true, // Legacy
+                userBranches: {
+                    include: { branch: true }
+                }
+            }
         });
 
         if (!user) {
@@ -48,6 +54,62 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // --- Multi-Branch Logic ---
+
+        let availableBranches: any[] = [];
+
+        if (user.isSuperAdmin) {
+            // Superadmin gets all branches
+            availableBranches = await prisma.branch.findMany({
+                where: { isActive: true },
+                select: { id: true, name: true, code: true, type: true }
+            });
+        } else {
+            // Collect assigned branches
+            // 1. Legacy branch
+            if (user.branch) {
+                availableBranches.push(user.branch);
+            }
+            // 2. Multi-branch assignments
+            user.userBranches.forEach(ub => {
+                if (!availableBranches.find(b => b.id === ub.branchId)) {
+                    availableBranches.push(ub.branch);
+                }
+            });
+        }
+
+        // Case 1: Multiple branches or Superadmin -> Require Selection
+        if (availableBranches.length > 1 || user.isSuperAdmin) {
+            return NextResponse.json({
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    username: user.username,
+                    role: user.role
+                },
+                requiresBranchSelection: true,
+                availableBranches: availableBranches.map(b => ({
+                    id: b.id,
+                    name: b.name,
+                    code: b.code,
+                    type: b.type
+                })),
+                // In a real app, sign a temp jwt here. For now, client uses User ID.
+                secret: 'temp-pending-secret'
+            });
+        }
+
+        // Case 2: Zero branches (and not superadmin) -> Error
+        if (availableBranches.length === 0 && !user.isSuperAdmin) {
+            return NextResponse.json(
+                { error: 'No active branches assigned to this user.' },
+                { status: 403 }
+            );
+        }
+
+        // Case 3: Single Branch -> Auto Login
+        const targetBranchId = availableBranches[0].id;
+
         // Create session token
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date();
@@ -61,12 +123,21 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // Set HTTP-only cookie
+        // Set HTTP-only auth cookie
         const cookie = serialize('auth_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: '/'
+        });
+
+        // Set Branch Context Cookie
+        const branchCookie = serialize('selectedBranches', JSON.stringify([targetBranchId]), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60,
             path: '/'
         });
 
@@ -76,10 +147,13 @@ export async function POST(request: NextRequest) {
                 name: user.name,
                 username: user.username,
                 role: user.role
-            }
+            },
+            requiresBranchSelection: false,
+            targetBranchId
         });
 
         response.headers.append('Set-Cookie', cookie);
+        response.headers.append('Set-Cookie', branchCookie);
 
         return response;
     } catch (error) {

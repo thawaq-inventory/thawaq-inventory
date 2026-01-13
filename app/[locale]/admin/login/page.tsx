@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Logo } from "@/components/ui/logo";
+import { Loader2, Store, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -11,7 +12,13 @@ export default function AdminLoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    // Multi-branch state
+    const [showBranchSelector, setShowBranchSelector] = useState(false);
+    const [availableBranches, setAvailableBranches] = useState<any[]>([]);
+    const [userId, setUserId] = useState('');
+    const [secret, setSecret] = useState('');
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
@@ -19,9 +26,7 @@ export default function AdminLoginPage() {
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
             });
 
@@ -31,15 +36,102 @@ export default function AdminLoginPage() {
                 throw new Error(data.error || 'Login failed');
             }
 
-            // Redirect to admin dashboard
+            if (data.requiresBranchSelection) {
+                setUserId(data.user.id);
+                setSecret(data.secret);
+                setAvailableBranches(data.availableBranches);
+                setShowBranchSelector(true);
+                setLoading(false); // Stop loading to show selector
+            } else {
+                // Auto-logged in (Single branch)
+                router.push('/admin');
+                router.refresh();
+            }
+        } catch (err: any) {
+            setError(err.message);
+            setLoading(false);
+        }
+    };
+
+    const handleSelectBranch = async (branchId: string) => {
+        setLoading(true);
+        setError('');
+
+        try {
+            const res = await fetch('/api/auth/select-branch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, branchId, secret }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to select branch');
+            }
+
             router.push('/admin');
             router.refresh();
         } catch (err: any) {
             setError(err.message);
-        } finally {
             setLoading(false);
         }
     };
+
+    if (showBranchSelector) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+                <div className="w-full max-w-md">
+                    <div className="text-center mb-8">
+                        <Logo size="lg" />
+                        <h1 className="mt-6 text-2xl font-bold text-gray-900">Select Location</h1>
+                        <p className="mt-2 text-gray-600">Choose which branch to access</p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-xl p-6 space-y-4">
+                        {error && (
+                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="grid gap-3">
+                            {availableBranches.map((branch) => (
+                                <button
+                                    key={branch.id}
+                                    onClick={() => handleSelectBranch(branch.id)}
+                                    disabled={loading}
+                                    className="flex items-center justify-between w-full p-4 text-left border rounded-xl hover:bg-blue-50 hover:border-blue-200 transition-all group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                            <Store className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900 group-hover:text-blue-700">
+                                                {branch.name}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 font-mono">
+                                                {branch.code} • {branch.type}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+                                </button>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={() => setShowBranchSelector(false)}
+                            className="w-full py-3 text-gray-500 hover:text-gray-700 text-sm font-medium"
+                        >
+                            Back to Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
@@ -53,7 +145,7 @@ export default function AdminLoginPage() {
 
                 {/* Login Form */}
                 <div className="bg-white rounded-2xl shadow-xl p-8">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleLogin} className="space-y-6">
                         {error && (
                             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                                 {error}
@@ -95,9 +187,9 @@ export default function AdminLoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
+                            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg flex items-center justify-center gap-2"
                         >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Sign In'}
                         </button>
                     </form>
 

@@ -11,10 +11,17 @@ datasource db {
 }
 
 // Branch/Franchise Management
+enum BranchType {
+  KITCHEN
+  BRANCH
+  WAREHOUSE
+}
+
 model Branch {
   id          String   @id @default(uuid())
   name        String   // "Downtown", "Mall Location", etc.
   code        String   @unique // Short code like "DT", "ML"
+  type        BranchType @default(BRANCH) // Kitchen, Branch, Warehouse
   address     String?
   phone       String?
   email       String?
@@ -43,6 +50,13 @@ model Branch {
   expenses    Expense[]
   payrollTransactions PayrollTransaction[]
   clockEntries ClockEntry[]
+  
+  // New Inventory Relations
+  inventoryLevels InventoryLevel[]
+  sourceTransactions InventoryTransaction[] @relation("SourceBranch")
+  destTransactions   InventoryTransaction[] @relation("DestBranch")
+  transfersFrom      TransferRequest[]      @relation("TransferFromBranch")
+  transfersTo        TransferRequest[]      @relation("TransferToBranch")
 }
 
 model User {
@@ -81,6 +95,9 @@ model User {
   shiftTemplates    ShiftTemplate[]
   payrollTransactions PayrollTransaction[]
   clockEntries      ClockEntry[]
+  
+  // New Inventory Relations
+  inventoryTransactions InventoryTransaction[]
 }
 
 model Product {
@@ -118,7 +135,14 @@ model Product {
   productionBatchesProduced ProductionBatch[] @relation("ProducedItems")
   productionItems ProductionItem[]
   receivingItems ReceivingItem[]
+  
+  // New Inventory Relations
+  inventoryLevels InventoryLevel[]
+  inventoryTransactions InventoryTransaction[]
+  transferItems TransferItem[]
 }
+
+// ... (Existing models like InventoryLog, FoodicsConfig, Accounting models remain unchanged)
 
 model InventoryLog {
   id            String   @id @default(uuid())
@@ -227,9 +251,100 @@ model InvoiceItem {
   amount      Float
 }
 
+// New Multi-Branch Core Models
+
+// Authentic Source of Truth for quantity
+model InventoryLevel {
+  id              String   @id @default(uuid())
+  productId       String
+  branchId        String   // "Location" in user terms
+  quantityOnHand  Float    @default(0)
+  reorderPoint    Float    @default(0)
+  
+  product         Product  @relation(fields: [productId], references: [id])
+  branch          Branch   @relation(fields: [branchId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([productId, branchId])
+  @@index([branchId])
+}
+
+enum TransactionType {
+  PURCHASE_IN
+  TRANSFER_OUT
+  TRANSFER_IN
+  WASTE
+  SALE
+  ADJUSTMENT
+}
+
+model InventoryTransaction {
+  id              String   @id @default(uuid())
+  type            TransactionType
+  
+  sourceBranchId  String?  // Null for Purchase/Adjustment
+  destBranchId    String?  // Null for Waste/Sale
+  
+  productId       String
+  quantity        Float
+  
+  userId          String
+  timestamp       DateTime @default(now())
+  notes           String?
+
+  // Relations
+  product         Product @relation(fields: [productId], references: [id])
+  user            User    @relation(fields: [userId], references: [id])
+  sourceBranch    Branch? @relation("SourceBranch", fields: [sourceBranchId], references: [id])
+  destBranch      Branch? @relation("DestBranch", fields: [destBranchId], references: [id])
+  
+  @@index([sourceBranchId])
+  @@index([destBranchId])
+  @@index([productId])
+  @@index([timestamp])
+}
+
+enum TransferStatus {
+  REQUESTED
+  IN_TRANSIT
+  RECEIVED
+  REJECTED
+}
+
+model TransferRequest {
+  id              String         @id @default(uuid())
+  fromBranchId    String
+  toBranchId      String
+  status          TransferStatus @default(REQUESTED)
+  
+  notes           String?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relations
+  fromBranch      Branch         @relation("TransferFromBranch", fields: [fromBranchId], references: [id])
+  toBranch        Branch         @relation("TransferToBranch", fields: [toBranchId], references: [id])
+  items           TransferItem[]
+}
+
+model TransferItem {
+  id              String          @id @default(uuid())
+  requestId       String
+  productId       String
+  quantity        Float
+  
+  request         TransferRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id])
+}
+
+// ... (Existing legacy Location, LocationStock, StockTransfer models kept for data safety, can be deprecated)
+
 // Advanced Inventory Features
 
-// 1. Multi-Location Support
+// 1. Multi-Location Support (Legacy - Consider migrating to Branch/InventoryLevel)
 model Location {
   id          String   @id @default(uuid())
   name        String
