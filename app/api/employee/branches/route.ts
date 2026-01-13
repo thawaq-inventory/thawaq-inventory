@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        let branches = [];
+        let branches: any[] = [];
 
         // logic: If SuperAdmin -> Fetch ALL active branches.
         // If Employee -> Fetch assigned branches.
