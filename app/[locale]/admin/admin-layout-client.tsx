@@ -29,7 +29,8 @@ import {
     Shield,
     Clock,
     Menu,
-    X
+    X,
+    ArrowLeftRight
 } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -191,6 +192,9 @@ export function AdminLayoutClient({
                                 </NavLink>
                                 <NavLink href="/admin/history" icon={History}>
                                     {t('history')}
+                                </NavLink>
+                                <NavLink href="/admin/inventory/transfers" icon={ArrowLeftRight}>
+                                    Stock Transfers
                                 </NavLink>
                                 <NavLink href="/admin/inventory/settings" icon={Settings}>
                                     {t('settings')}
