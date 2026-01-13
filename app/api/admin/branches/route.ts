@@ -46,8 +46,9 @@ export async function GET() {
         return NextResponse.json(branches);
     } catch (error) {
         console.error('Error fetching branches:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to fetch branches' },
+            { error: `Failed to fetch branches: ${errorMessage}` },
             { status: 500 }
         );
     }
@@ -113,8 +114,9 @@ export async function POST(request: Request) {
         return NextResponse.json(branch, { status: 201 });
     } catch (error) {
         console.error('Error creating branch:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to create branch' },
+            { error: `Failed to create branch: ${errorMessage}` },
             { status: 500 }
         );
     }

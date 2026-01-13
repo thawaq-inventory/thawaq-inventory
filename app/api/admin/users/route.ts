@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcrypt';
 import { getSelectedBranches } from '@/lib/branchFilter';
-
-const prisma = new PrismaClient();
 
 // GET /api/admin/users - List all users
 export async function GET(request: NextRequest) {
@@ -83,8 +81,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(users);
     } catch (error) {
         console.error('Error fetching users:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to fetch users' },
+            { error: `Failed to fetch users: ${errorMessage}` },
             { status: 500 }
         );
     }
@@ -200,8 +199,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(completeUser, { status: 201 });
     } catch (error) {
         console.error('Error creating user:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to create user' },
+            { error: `Failed to create user: ${errorMessage}` },
             { status: 500 }
         );
     }

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -167,8 +165,9 @@ export async function POST(request: NextRequest) {
 
     } catch (error) {
         console.error('Error in clock API:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to process clock request' },
+            { error: `Failed to process clock request: ${errorMessage}` },
             { status: 500 }
         );
     }

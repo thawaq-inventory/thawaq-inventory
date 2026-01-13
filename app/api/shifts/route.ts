@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { getBranchFilterForAPI } from '@/lib/branchFilter';
-
-const prisma = new PrismaClient();
 
 // GET /api/shifts - Fetch shifts with optional filters
 export async function GET(request: NextRequest) {
@@ -58,8 +56,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(shifts);
     } catch (error) {
         console.error('Error fetching shifts:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to fetch shifts' },
+            { error: `Failed to fetch shifts: ${errorMessage}` },
             { status: 500 }
         );
     }
@@ -151,8 +150,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(shift, { status: 201 });
     } catch (error) {
         console.error('Error creating shift:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json(
-            { error: 'Failed to create shift' },
+            { error: `Failed to create shift: ${errorMessage}` },
             { status: 500 }
         );
     }
