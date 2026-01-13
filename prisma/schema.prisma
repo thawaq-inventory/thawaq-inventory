@@ -50,7 +50,7 @@ model User {
   name      String
   username  String   @unique // For login
   password  String              // Hashed password
-  pinCode   String?  @unique    // Optional: Simple auth for iPad (legacy)
+  pinCode   String?             // Optional: Simple auth for iPad (allows duplicates)
   role      String   @default("EMPLOYEE") // ADMIN or EMPLOYEE
   isActive  Boolean  @default(true)        // Enable/disable account
   
