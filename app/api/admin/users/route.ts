@@ -8,24 +8,39 @@ const prisma = new PrismaClient();
 // GET /api/admin/users - List all users
 export async function GET(request: NextRequest) {
     try {
-        // Get selected branches for filtering
-        const selectedBranches = await getSelectedBranches();
+        // Check if current user is a super admin
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const authToken = cookieStore.get('auth_token');
 
-        // Build where clause to include super admins OR users matching branch filter
-        // Super admins should always be visible regardless of branch filter
-        // Users can be in a branch via legacy branchId OR via userBranches junction table
+        let isSuperAdmin = false;
+        if (authToken) {
+            const session = await prisma.session.findUnique({
+                where: { token: authToken.value },
+                include: { user: { select: { isSuperAdmin: true } } }
+            });
+            isSuperAdmin = session?.user?.isSuperAdmin || false;
+        }
+
+        // Super admins see ALL users - no filtering
+        // Regular admins see users filtered by selected branches
         let whereClause = {};
 
-        if (!selectedBranches.includes('all') && selectedBranches.length > 0) {
-            whereClause = {
-                OR: [
-                    { isSuperAdmin: true },  // Always include super admins
-                    { branchId: { in: selectedBranches } },  // Legacy branchId field
-                    { userBranches: { some: { branchId: { in: selectedBranches } } } }  // userBranches junction table
-                ]
-            };
+        if (!isSuperAdmin) {
+            // Get selected branches for filtering (only for non-super admins)
+            const selectedBranches = await getSelectedBranches();
+
+            if (!selectedBranches.includes('all') && selectedBranches.length > 0) {
+                whereClause = {
+                    OR: [
+                        { isSuperAdmin: true },  // Always include super admins in results
+                        { branchId: { in: selectedBranches } },  // Legacy branchId field
+                        { userBranches: { some: { branchId: { in: selectedBranches } } } }  // userBranches junction table
+                    ]
+                };
+            }
         }
-        // If 'all' is selected or no filter, whereClause stays empty (no filtering)
+        // If super admin or 'all' is selected, whereClause stays empty (no filtering)
 
         const users = await prisma.user.findMany({
             where: whereClause,
