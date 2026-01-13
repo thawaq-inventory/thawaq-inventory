@@ -105,7 +105,7 @@ export default function AdminExpensesPage() {
             const meRes = await fetch('/api/auth/me');
             if (!meRes.ok) throw new Error('Failed to retrieve user session');
             const meData = await meRes.json();
-            const userId = meData.id;
+            const userId = meData.user.id;
 
             // Update expense first if edited
             if (
@@ -161,7 +161,7 @@ export default function AdminExpensesPage() {
             // Get current user ID
             const meRes = await fetch('/api/auth/me');
             const meData = await meRes.json();
-            const userId = meData.id;
+            const userId = meData.user.id;
 
             await fetch(`/api/expenses/${selectedExpense.id}/reject`, {
                 method: 'POST',
