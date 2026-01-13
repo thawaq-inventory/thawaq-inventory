@@ -39,69 +39,71 @@ export async function POST(
             );
         }
 
-        // Create journal entry
-        const journalEntry = await prisma.journalEntry.create({
-            data: {
-                date: expense.expenseDate,
-                description: `Expense: ${expense.description || expense.customCategory || 'Miscellaneous'}`,
-                reference: `EXP-${expense.id.substring(0, 8)}`,
-                lines: {
-                    create: [
-                        {
-                            accountId: debitAccountId,
-                            debit: expense.amount,
-                            credit: 0,
-                        },
-                        {
-                            accountId: creditAccountId,
-                            debit: 0,
-                            credit: expense.amount,
+        // Execute as a single atomic transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Create Journal Entry
+            const journalEntry = await tx.journalEntry.create({
+                data: {
+                    date: expense.expenseDate,
+                    description: `Expense: ${expense.description || expense.customCategory || 'Miscellaneous'}`,
+                    reference: `EXP-${expense.id.substring(0, 8)}`,
+                    lines: {
+                        create: [
+                            {
+                                accountId: debitAccountId,
+                                debit: expense.amount,
+                                credit: 0,
+                            },
+                            {
+                                accountId: creditAccountId,
+                                debit: 0,
+                                credit: expense.amount,
+                            }
+                        ]
+                    }
+                },
+                include: {
+                    lines: {
+                        include: {
+                            account: true
                         }
-                    ]
-                }
-            },
-            include: {
-                lines: {
-                    include: {
-                        account: true
                     }
                 }
-            }
-        });
+            });
 
-        // Update expense
-        const updatedExpense = await prisma.expense.update({
-            where: { id },
-            data: {
-                status: 'APPROVED',
-                reviewedById,
-                reviewedAt: new Date(),
-                debitAccountId,
-                creditAccountId,
-                journalEntryId: journalEntry.id,
-            },
-            include: {
-                category: true,
-                submittedBy: true,
-                reviewedBy: true,
-                debitAccount: true,
-                creditAccount: true,
-                journalEntry: {
-                    include: {
-                        lines: {
-                            include: {
-                                account: true
+            // 2. Update Expense with Link & Status
+            const updatedExpense = await tx.expense.update({
+                where: { id },
+                data: {
+                    status: 'APPROVED',
+                    reviewedById,
+                    reviewedAt: new Date(),
+                    debitAccountId,
+                    creditAccountId,
+                    journalEntryId: journalEntry.id,
+                },
+                include: {
+                    category: true,
+                    submittedBy: true,
+                    reviewedBy: true,
+                    debitAccount: true,
+                    creditAccount: true,
+                    journalEntry: {
+                        include: {
+                            lines: {
+                                include: {
+                                    account: true
+                                }
                             }
                         }
                     }
                 }
-            }
+            });
+
+            return { expense: updatedExpense, journalEntry };
         });
 
-        return NextResponse.json({
-            expense: updatedExpense,
-            journalEntry
-        });
+        return NextResponse.json(result);
     } catch (error) {
         console.error('Error approving expense:', error);
         return NextResponse.json(
