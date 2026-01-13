@@ -80,12 +80,21 @@ export async function POST(request: NextRequest) {
         // Update stock levels
         // Decrease raw ingredients
         for (const ing of ingredients) {
-            await prisma.product.update({
-                where: { id: ing.productId },
-                data: {
-                    stockLevel: {
-                        decrement: ing.quantityUsed
+            // Update InventoryLevel for the Ingredient at this Branch
+            await prisma.inventoryLevel.upsert({
+                where: {
+                    productId_branchId: {
+                        productId: ing.productId,
+                        branchId: targetBranchId
                     }
+                },
+                update: {
+                    quantityOnHand: { decrement: ing.quantityUsed }
+                },
+                create: {
+                    productId: ing.productId,
+                    branchId: targetBranchId,
+                    quantityOnHand: -ing.quantityUsed // Negative if not previously tracked
                 }
             });
 
@@ -102,12 +111,20 @@ export async function POST(request: NextRequest) {
         }
 
         // Increase produced item
-        await prisma.product.update({
-            where: { id: outputProductId },
-            data: {
-                stockLevel: {
-                    increment: quantityProduced
+        await prisma.inventoryLevel.upsert({
+            where: {
+                productId_branchId: {
+                    productId: outputProductId,
+                    branchId: targetBranchId
                 }
+            },
+            update: {
+                quantityOnHand: { increment: quantityProduced }
+            },
+            create: {
+                productId: outputProductId,
+                branchId: targetBranchId,
+                quantityOnHand: quantityProduced
             }
         });
 
