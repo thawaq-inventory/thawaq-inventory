@@ -159,21 +159,14 @@ export default function EmployeeShiftsPage() {
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <header className="mb-8">
-                    <div className="flex items-center justify-between mb-6">
-                        <Button
-                            variant="ghost"
-                            onClick={() => router.push('/employee')}
-                            className="text-slate-600 hover:text-teal-600"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            {t('backToDashboard')}
-                        </Button>
-                        <LanguageSwitcher />
-                    </div>
-
-                    <div className="text-center mb-8">
-                        <Logo size="lg" />
-                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push('/employee')}
+                        className="text-slate-600 hover:text-teal-600 mb-4"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        {t('backToDashboard')}
+                    </Button>
 
                     <div className="text-center">
                         <h1 className="text-3xl font-bold text-slate-900 flex items-center justify-center gap-3 mb-2">

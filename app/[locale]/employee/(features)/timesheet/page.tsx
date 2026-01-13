@@ -239,21 +239,14 @@ export default function EmployeeTimesheetPage() {
             <div className="max-w-4xl mx-auto space-y-6">
                 {/* Header */}
                 <header className="mb-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <Button
-                            variant="ghost"
-                            onClick={() => router.push('/employee')}
-                            className="text-slate-600 hover:text-blue-600"
-                        >
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            {t('backToDashboard')}
-                        </Button>
-                        <LanguageSwitcher />
-                    </div>
-
-                    <div className="text-center mb-6">
-                        <Logo size="lg" />
-                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push('/employee')}
+                        className="text-slate-600 hover:text-blue-600 mb-4"
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        {t('backToDashboard')}
+                    </Button>
 
                     <div className="text-center">
                         <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('timesheet.title')}</h1>
