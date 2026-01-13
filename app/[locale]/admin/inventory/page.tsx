@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
+import { RecordWasteDialog } from '@/components/RecordWasteDialog';
 import { ProductionDialog } from '@/components/ProductionDialog';
 import { ArrowLeftRight, Package, TrendingUp } from 'lucide-react';
 import { Link } from '@/i18n/routing';
@@ -52,16 +53,20 @@ export default async function InventoryPage() {
                                 Stock Take
                             </button>
                         </Link>
+                        <RecordWasteDialog branchId={currentBranchId} />
                         <ProductionDialog branchId={currentBranchId} />
                     </div>
                 )}
                 {!isKitchen && currentBranchId && currentBranchId !== 'HEAD_OFFICE' && (
-                    <Link href="/admin/inventory/stock-count">
-                        <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium">
-                            <Package className="w-4 h-4" />
-                            Start Stock Take
-                        </button>
-                    </Link>
+                    <div className="flex gap-2">
+                        <Link href="/admin/inventory/stock-count">
+                            <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium">
+                                <Package className="w-4 h-4" />
+                                Start Stock Take
+                            </button>
+                        </Link>
+                        <RecordWasteDialog branchId={currentBranchId} />
+                    </div>
                 )}
             </div>
 
