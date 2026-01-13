@@ -1,26 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { getBranchFilterForAPI } from '@/lib/branchFilter';
+import { getSelectedBranches } from '@/lib/branchFilter';
 
 const prisma = new PrismaClient();
 
 // GET /api/admin/users - List all users
 export async function GET(request: NextRequest) {
     try {
-        // Get branch filter from cookies
-        const branchFilter = await getBranchFilterForAPI();
+        // Get selected branches for filtering
+        const selectedBranches = await getSelectedBranches();
 
         // Build where clause to include super admins OR users matching branch filter
         // Super admins should always be visible regardless of branch filter
-        const whereClause = Object.keys(branchFilter).length > 0
-            ? {
+        // Users can be in a branch via legacy branchId OR via userBranches junction table
+        let whereClause = {};
+
+        if (!selectedBranches.includes('all') && selectedBranches.length > 0) {
+            whereClause = {
                 OR: [
                     { isSuperAdmin: true },  // Always include super admins
-                    branchFilter              // Include users matching branch filter
+                    { branchId: { in: selectedBranches } },  // Legacy branchId field
+                    { userBranches: { some: { branchId: { in: selectedBranches } } } }  // userBranches junction table
                 ]
-            }
-            : {}; // No filter if branchFilter is empty
+            };
+        }
+        // If 'all' is selected or no filter, whereClause stays empty (no filtering)
 
         const users = await prisma.user.findMany({
             where: whereClause,

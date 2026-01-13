@@ -43,12 +43,47 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+
+        // Get branchId from request body or from selected branches cookie
+        let branchId = body.branchId;
+
+        if (!branchId) {
+            // Get selected branches from cookies
+            const { cookies } = await import('next/headers');
+            const cookieStore = await cookies();
+            const selectedBranchesCookie = cookieStore.get('selectedBranches');
+
+            if (selectedBranchesCookie) {
+                try {
+                    const selectedBranches = JSON.parse(decodeURIComponent(selectedBranchesCookie.value));
+                    // Use first selected branch that isn't 'all'
+                    branchId = selectedBranches.find((b: string) => b !== 'all');
+                } catch (e) {
+                    console.error('Error parsing selectedBranches cookie:', e);
+                }
+            }
+
+            // If still no branchId, try to get the first active branch
+            if (!branchId) {
+                const { prisma: prismaClient } = await import('@/lib/prisma');
+                const firstBranch = await prismaClient.branch.findFirst({
+                    where: { isActive: true },
+                    select: { id: true }
+                });
+                branchId = firstBranch?.id;
+            }
+        }
+
+        if (!branchId) {
+            return NextResponse.json({ error: 'No branch available. Please create a branch first.' }, { status: 400 });
+        }
+
         const product = await prisma.product.create({
             data: {
                 name: body.name,
                 sku: body.sku,
                 description: body.description,
-                branchId: body.branchId,
+                branchId: branchId,
                 stockLevel: body.stockLevel || 0,
                 unit: body.unit || 'UNIT',
                 minStock: body.minStock || 0,
@@ -58,6 +93,7 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json(product, { status: 201 });
     } catch (error) {
+        console.error('Error creating product:', error);
         return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
     }
 }
