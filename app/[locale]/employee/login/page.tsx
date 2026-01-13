@@ -133,7 +133,7 @@ export default function EmployeeLoginPage() {
                     {/* PIN Display */}
                     {selectedEmployeeId && (
                         <>
-                            <div>
+                            <div dir="ltr">
                                 <label className="block text-sm font-medium text-slate-700 mb-2 text-center">
                                     {t('login.enterPin')}
                                 </label>
@@ -152,7 +152,7 @@ export default function EmployeeLoginPage() {
                             </div>
 
                             {/* PIN Pad */}
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-3 gap-3" dir="ltr">
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
                                     <button
                                         key={digit}
@@ -198,6 +198,6 @@ export default function EmployeeLoginPage() {
                     )}
                 </CardContent>
             </Card>
-        </div>
+        </div >
     );
 }
