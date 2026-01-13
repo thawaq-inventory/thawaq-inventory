@@ -103,6 +103,7 @@ export default function AdminExpensesPage() {
         try {
             // Get current user ID
             const meRes = await fetch('/api/auth/me');
+            if (!meRes.ok) throw new Error('Failed to retrieve user session');
             const meData = await meRes.json();
             const userId = meData.id;
 
@@ -113,7 +114,7 @@ export default function AdminExpensesPage() {
                 editDebitAccountId !== selectedExpense.debitAccountId ||
                 editCreditAccountId !== selectedExpense.creditAccountId
             ) {
-                await fetch(`/api/expenses/${selectedExpense.id}`, {
+                const updateRes = await fetch(`/api/expenses/${selectedExpense.id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -123,10 +124,11 @@ export default function AdminExpensesPage() {
                         creditAccountId: editCreditAccountId,
                     }),
                 });
+                if (!updateRes.ok) throw new Error('Failed to update expense details');
             }
 
             // Approve and create journal entry
-            await fetch(`/api/expenses/${selectedExpense.id}/approve`, {
+            const approveRes = await fetch(`/api/expenses/${selectedExpense.id}/approve`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -136,11 +138,16 @@ export default function AdminExpensesPage() {
                 }),
             });
 
+            if (!approveRes.ok) {
+                const errorData = await approveRes.json();
+                throw new Error(errorData.error || 'Failed to approve expense');
+            }
+
             setSelectedExpense(null);
             fetchData();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error approving expense:', error);
-            alert('Failed to approve expense');
+            alert(error.message || 'Failed to approve expense');
         } finally {
             setProcessing(false);
         }
