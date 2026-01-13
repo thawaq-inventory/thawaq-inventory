@@ -71,7 +71,6 @@ export async function POST(request: NextRequest) {
                     data: {
                         type: 'ADJUSTMENT',
                         productId,
-                        branchId: branchId, // Source/Dest is tricky for Adjustment. 
                         // Schema: sourceBranchId, destBranchId. 
                         // For Adjustment, usually we set the branch as source? Or null?
                         // Let's use `sourceBranchId` for the branch where adjustment happened.
