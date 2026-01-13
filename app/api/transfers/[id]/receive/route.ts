@@ -5,9 +5,9 @@ const prisma = new PrismaClient();
 
 // POST /api/transfers/[id]/receive
 // Receive the transfer -> Add Stock to Destination
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const { userId } = await request.json();
 
         if (!userId) {

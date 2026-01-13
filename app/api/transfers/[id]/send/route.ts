@@ -5,9 +5,9 @@ const prisma = new PrismaClient();
 
 // POST /api/transfers/[id]/send
 // Approve/Send the transfer -> Deduct Stock from Source
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { id } = params;
+        const { id } = await params;
         // In a real app, we would get `userId` from the session. 
         // For now, expect it in the body for simplicity of testing.
         const { userId } = await request.json();
