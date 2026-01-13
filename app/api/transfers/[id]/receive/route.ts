@@ -59,6 +59,52 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 });
             }
 
+            // 3. Financials (Move Value between Branches)
+            // Ideally we do this per item to capture precise cost, but bulk entry is fine for MVP.
+            let totalTransferValue = 0;
+
+            for (const item of transfer.items) {
+                const p = await tx.product.findUnique({ where: { id: item.productId } });
+                if (p) {
+                    totalTransferValue += (p.cost || 0) * item.quantity;
+                }
+            }
+
+            if (totalTransferValue > 0) {
+                // Credit Inventory (Source) -> Debit Inventory (Dest)
+                // NOTE: In a single-company single-inventory-account ledger, this is 1200 -> 1200.
+                // It documents the flow, even if net GL impact is zero.
+
+                const inventoryAccount = await tx.accountingMapping.findUnique({
+                    where: { eventKey: 'INVENTORY_ASSET_DEFAULT' },
+                    include: { account: true }
+                }).then(m => m?.account) || await tx.account.findUnique({ where: { code: '1200' } });
+
+                if (inventoryAccount) {
+                    await tx.journalEntry.create({
+                        data: {
+                            description: `Stock Transfer: ${transfer.fromBranchId} -> ${transfer.toBranchId} (Ref: ${transfer.id.slice(0, 8)})`,
+                            reference: `TRF-${transfer.id.slice(0, 8)}`,
+                            date: new Date(),
+                            lines: {
+                                create: [
+                                    {
+                                        accountId: inventoryAccount.id,
+                                        debit: totalTransferValue, // Destination Increase (Asset)
+                                        credit: 0
+                                    },
+                                    {
+                                        accountId: inventoryAccount.id,
+                                        debit: 0,
+                                        credit: totalTransferValue // Source Decrease (Asset)
+                                    }
+                                ]
+                            }
+                        }
+                    });
+                }
+            }
+
             // 3. Update Request Status
             const updatedTransfer = await tx.transferRequest.update({
                 where: { id },

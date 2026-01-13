@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
         // First get the output product to retrieve its branchId
         const product = await prisma.product.findUnique({
             where: { id: outputProductId },
-            select: { id: true, branchId: true }
+            select: { id: true, branchId: true, name: true }
         });
 
         if (!product) {
@@ -128,16 +128,84 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // Log inventory change
-        await prisma.inventoryLog.create({
-            data: {
-                productId: outputProductId,
-                branchId: targetBranchId,
-                changeAmount: quantityProduced,
-                reason: 'PRODUCTION',
-                userId: userId || null,
+        // 3. Financials: Record Value Added to Output Product & Cost Transfer
+        // Calculate Cost of Batch
+        let totalBatchCost = 0;
+
+        // We need to re-fetch ingredients with their costs because the input `ingredients` might not have it or we want fresh DB connection
+        // Optimization: Use the `ingredients` array we iterated, assuming we can get costs. 
+        // Better: Fetch costs now or during the loop. 
+
+        for (const ing of ingredients) {
+            const p = await prisma.product.findUnique({ where: { id: ing.productId } });
+            if (p) {
+                totalBatchCost += (p.cost || 0) * ing.quantityUsed;
             }
+        }
+
+        // Update Output Product Cost (WAC)
+        // Similar to Purchase WAC: (OldVal + NewVal) / TotalQty
+        const outProduct = await prisma.product.findUnique({
+            where: { id: outputProductId },
+            include: { inventoryLevels: true }
         });
+
+        if (outProduct) {
+            const currentGlobalStock = outProduct.inventoryLevels.reduce((sum, level) => sum + level.quantityOnHand, 0);
+            const currentTotalValue = (currentGlobalStock - quantityProduced) * (outProduct.cost || 0); // Note: we already incremented stock above?
+            // Actually, we executed increment above in Step 2.
+            // So `currentGlobalStock` INCLUDES the new `quantityProduced`.
+            // The "Old Stock" was `currentGlobalStock - quantityProduced`.
+
+            const oldStock = currentGlobalStock - quantityProduced;
+            const oldValue = oldStock * (outProduct.cost || 0);
+
+            let newCost = outProduct.cost || 0;
+            if (currentGlobalStock > 0) {
+                newCost = (oldValue + totalBatchCost) / currentGlobalStock;
+            }
+
+            await prisma.product.update({
+                where: { id: outputProductId },
+                data: { cost: newCost }
+            });
+        }
+
+        // Create Journal Entry
+        // Credit Inventory (Raw Mats) -> Debit Inventory (Finished Goods)
+        // In simple setup: Debit 1200, Credit 1200.
+        // We find default inventory account.
+        const inventoryAccount = await prisma.accountingMapping.findUnique({
+            where: { eventKey: 'INVENTORY_ASSET_DEFAULT' },
+            include: { account: true }
+        }).then(m => m?.account) || await prisma.account.findUnique({ where: { code: '1200' } });
+
+        if (inventoryAccount && totalBatchCost > 0) {
+            await prisma.journalEntry.create({
+                data: {
+                    description: `Production: ${product.name} (Qty: ${quantityProduced})`,
+                    reference: `PROD-${batch.id.substring(0, 8)}`,
+                    date: new Date(),
+                    lines: {
+                        create: [
+                            // Debit Finished Goods (Asset Increase)
+                            {
+                                accountId: inventoryAccount.id,
+                                debit: totalBatchCost,
+                                credit: 0
+                            },
+                            // Credit Raw Materials (Asset Decrease)
+                            {
+                                accountId: inventoryAccount.id, // Same account for now, but logs the flow
+                                debit: 0,
+                                credit: totalBatchCost
+                            }
+                        ]
+                    }
+                }
+            });
+        }
+
 
         return NextResponse.json(batch, { status: 201 });
     } catch (error) {

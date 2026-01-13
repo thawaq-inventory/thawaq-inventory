@@ -112,6 +112,57 @@ export async function POST(request: NextRequest) {
                 });
 
                 results.push({ productId, variance });
+
+                // 4. Financials (Record Variance Value)
+                if (variance !== 0) {
+                    const p = await tx.product.findUnique({ where: { id: productId } });
+                    if (p) {
+                        const cost = p.cost || 0;
+                        const varianceValue = Math.abs(variance * cost);
+
+                        // Accounts
+                        const inventoryAccount = await tx.accountingMapping.findUnique({
+                            where: { eventKey: 'INVENTORY_ASSET_DEFAULT' },
+                            include: { account: true }
+                        }).then(m => m?.account) || await tx.account.findUnique({ where: { code: '1200' } });
+
+                        // Shrinkage Logic: If negative variance, it's an Expense (Shrinkage).
+                        // If positive variance, it's basically "Found Inventory" (Income/Gain or reduce COGS). 
+                        // For now, let's map Positive Variance to "Inventory Adjustments" (6020) as a credit (gain) or debit (loss).
+                        // Usually 6020 is Expense.
+
+                        const adjustmentAccount = await tx.accountingMapping.findUnique({
+                            where: { eventKey: 'INVENTORY_ADJUSTMENT' },
+                            include: { account: true }
+                        }).then(m => m?.account) || await tx.account.findUnique({ where: { code: '6020' } }); // Shrinkage
+
+                        if (inventoryAccount && adjustmentAccount && varianceValue > 0) {
+                            const isLoss = variance < 0;
+
+                            await tx.journalEntry.create({
+                                data: {
+                                    description: `Stock Adjustment: ${p.name} (${variance > 0 ? '+' : ''}${variance} ${p.unit})`,
+                                    reference: `ADJ-${Date.now()}`,
+                                    date: new Date(),
+                                    lines: {
+                                        create: [
+                                            {
+                                                accountId: isLoss ? adjustmentAccount.id : inventoryAccount.id,
+                                                debit: varianceValue, // Loss = Debit Expense. Gain = Debit Inventory.
+                                                credit: 0
+                                            },
+                                            {
+                                                accountId: isLoss ? inventoryAccount.id : adjustmentAccount.id,
+                                                debit: 0,
+                                                credit: varianceValue // Loss = Credit Inventory. Gain = Credit Expense (Income).
+                                            }
+                                        ]
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
             }
 
             return results;
