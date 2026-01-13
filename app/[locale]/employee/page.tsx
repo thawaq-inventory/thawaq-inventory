@@ -71,7 +71,7 @@ export default function EmployeeLanding() {
     ];
 
     return (
-        <div className="min-h-screen p-6 bg-slate-50">
+        <div className="min-h-screen p-6 bg-slate-50 pb-[env(safe-area-inset-bottom)]">
             {/* Header Bar */}
             <header className="max-w-2xl mx-auto mb-8">
                 <div className="flex items-center justify-between">
