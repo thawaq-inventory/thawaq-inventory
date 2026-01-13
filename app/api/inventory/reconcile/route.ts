@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
                         // For Adjustment, usually we set the branch as source? Or null?
                         // Let's use `sourceBranchId` for the branch where adjustment happened.
                         sourceBranchId: branchId,
-                        quantity: Math.abs(variance), // Transaction usually tracks magnitude
+                        // quantity: Math.abs(variance), // Removed duplicate
                         // Wait, if we use `InventoryLog` (legacy but still used in logic), we record signed change.
                         // `InventoryTransaction` is the new one.
                         // Let's check Schema regarding `InventoryTransaction` quantity. 
