@@ -25,7 +25,7 @@ export default function CreateBranchPage() {
     });
 
     // Handle Google Maps link input
-    const handleGoogleMapsLink = (value: string) => {
+    const handleGoogleMapsLink = async (value: string) => {
         setGoogleMapsLink(value);
         setLinkError('');
 
@@ -35,7 +35,24 @@ export default function CreateBranchPage() {
             return;
         }
 
-        const coords = parseGoogleMapsUrl(value);
+        // Check if it's a short link that needs expansion
+        let urlToParse = value;
+        if (value.includes('goo.gl') || value.includes('g.page') || value.includes('maps.app.goo.gl')) {
+            try {
+                const res = await fetch(`/api/admin/maps/expand?url=${encodeURIComponent(value)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.expandedUrl) {
+                        urlToParse = data.expandedUrl;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to expand URL:', error);
+                // Continue with original URL if expansion fails
+            }
+        }
+
+        const coords = parseGoogleMapsUrl(urlToParse);
         if (coords) {
             setParsedCoords(coords);
             setFormData(prev => ({

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { MapPin, Loader2, Link as LinkIcon, Check, AlertCircle } from 'lucide-react';
+import { parseGoogleMapsUrl, formatCoordinates, Coordinates } from '@/lib/googleMapsParser';
 
 export default function EditBranchPage() {
     const router = useRouter();
@@ -11,12 +13,19 @@ export default function EditBranchPage() {
     const [loading, setLoading] = useState(false);
     const [fetchingLoading, setFetchingLoading] = useState(true);
     const [error, setError] = useState('');
+    const [googleMapsLink, setGoogleMapsLink] = useState('');
+    const [parsedCoords, setParsedCoords] = useState<Coordinates | null>(null);
+    const [linkError, setLinkError] = useState('');
+    const [gettingLocation, setGettingLocation] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         code: '',
         address: '',
         phone: '',
         email: '',
+        latitude: '',
+        longitude: '',
+        geoRadius: '200',
     });
 
     useEffect(() => {
@@ -30,18 +39,102 @@ export default function EditBranchPage() {
             const res = await fetch(`/api/admin/branches/${id}`);
             if (!res.ok) throw new Error('Failed to fetch branch');
             const data = await res.json();
+
+            const lat = data.latitude !== null ? data.latitude.toString() : '';
+            const lng = data.longitude !== null ? data.longitude.toString() : '';
+
             setFormData({
                 name: data.name,
                 code: data.code,
                 address: data.address || '',
                 phone: data.phone || '',
                 email: data.email || '',
+                latitude: lat,
+                longitude: lng,
+                geoRadius: data.geoRadius ? data.geoRadius.toString() : '200',
             });
+
+            if (lat && lng) {
+                const coords = { latitude: parseFloat(lat), longitude: parseFloat(lng) };
+                setParsedCoords(coords);
+                setGoogleMapsLink(`https://maps.google.com/?q=${lat},${lng}`);
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
             setFetchingLoading(false);
         }
+    };
+
+    // Handle Google Maps link input
+    const handleGoogleMapsLink = async (value: string) => {
+        setGoogleMapsLink(value);
+        setLinkError('');
+
+        if (!value.trim()) {
+            setParsedCoords(null);
+            setFormData(prev => ({ ...prev, latitude: '', longitude: '' }));
+            return;
+        }
+
+        // Check if it's a short link that needs expansion
+        let urlToParse = value;
+        if (value.includes('goo.gl') || value.includes('g.page') || value.includes('maps.app.goo.gl')) {
+            try {
+                const res = await fetch(`/api/admin/maps/expand?url=${encodeURIComponent(value)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.expandedUrl) {
+                        urlToParse = data.expandedUrl;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to expand URL:', error);
+                // Continue with original URL if expansion fails
+            }
+        }
+
+        const coords = parseGoogleMapsUrl(urlToParse);
+        if (coords) {
+            setParsedCoords(coords);
+            setFormData(prev => ({
+                ...prev,
+                latitude: coords.latitude.toFixed(6),
+                longitude: coords.longitude.toFixed(6)
+            }));
+            setLinkError('');
+        } else {
+            setParsedCoords(null);
+            setLinkError('Could not extract coordinates from this link. Please paste a valid Google Maps link.');
+        }
+    };
+
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            setError('Geolocation is not supported by your browser');
+            return;
+        }
+
+        setGettingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude.toFixed(6);
+                const lng = position.coords.longitude.toFixed(6);
+                setFormData(prev => ({
+                    ...prev,
+                    latitude: lat,
+                    longitude: lng
+                }));
+                setParsedCoords({ latitude: parseFloat(lat), longitude: parseFloat(lng) });
+                setGoogleMapsLink(`https://maps.google.com/?q=${lat},${lng}`);
+                setGettingLocation(false);
+            },
+            (error) => {
+                setError('Failed to get location. Please enable location services.');
+                setGettingLocation(false);
+            },
+            { enableHighAccuracy: true }
+        );
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -50,10 +143,17 @@ export default function EditBranchPage() {
         setError('');
 
         try {
+            const submitData = {
+                ...formData,
+                latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+                longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+                geoRadius: formData.geoRadius ? parseFloat(formData.geoRadius) : 200,
+            };
+
             const res = await fetch(`/api/admin/branches/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(submitData),
             });
 
             if (!res.ok) {
@@ -187,6 +287,78 @@ export default function EditBranchPage() {
                                     value={formData.email}
                                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     placeholder="branch@althawaq.com"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Geolocation Settings */}
+                    <div className="mb-8">
+                        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <MapPin className="w-5 h-5" />
+                            Clock-In Location
+                        </h2>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Paste a Google Maps link for this branch location. Employees must be within the specified radius to clock in.
+                        </p>
+
+                        <div className="space-y-4">
+                            {/* Google Maps Link Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <LinkIcon className="w-4 h-4 inline mr-1" />
+                                    Google Maps Link
+                                </label>
+                                <input
+                                    type="url"
+                                    value={googleMapsLink}
+                                    onChange={(e) => handleGoogleMapsLink(e.target.value)}
+                                    placeholder="Paste Google Maps link here (e.g., https://maps.google.com/?q=31.9539,35.9106)"
+                                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${linkError ? 'border-red-300 bg-red-50' : parsedCoords ? 'border-green-300 bg-green-50' : 'border-gray-300'
+                                        }`}
+                                />
+                                {linkError && (
+                                    <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                                        <AlertCircle className="w-4 h-4" />
+                                        {linkError}
+                                    </p>
+                                )}
+                                {parsedCoords && (
+                                    <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
+                                        <Check className="w-4 h-4" />
+                                        Coordinates detected: {formatCoordinates(parsedCoords)}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Use Current Location Button */}
+                            <button
+                                type="button"
+                                onClick={getCurrentLocation}
+                                disabled={gettingLocation}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                            >
+                                {gettingLocation ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <MapPin className="w-4 h-4" />
+                                )}
+                                {gettingLocation ? 'Getting location...' : 'Or Use Current Location'}
+                            </button>
+
+                            {/* Radius */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Allowed Radius (meters)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={formData.geoRadius}
+                                    onChange={(e) => setFormData({ ...formData, geoRadius: e.target.value })}
+                                    placeholder="200"
+                                    min="50"
+                                    max="1000"
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
