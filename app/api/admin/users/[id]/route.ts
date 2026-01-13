@@ -155,23 +155,46 @@ async function updateUser(
     }
 }
 
-// DELETE /api/admin/users/[id] - Deactivate user
+// DELETE /api/admin/users/[id] - Deactivate or permanently delete user
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id } = await params;
-        await prisma.user.update({
-            where: { id },
-            data: { isActive: false }
-        });
+        const { searchParams } = new URL(request.url);
+        const permanent = searchParams.get('permanent') === 'true';
 
-        return NextResponse.json({ success: true });
+        if (permanent) {
+            // First delete related UserBranch records
+            await prisma.userBranch.deleteMany({
+                where: { userId: id }
+            });
+
+            // Delete clock entries
+            await prisma.clockEntry.deleteMany({
+                where: { userId: id }
+            });
+
+            // Then permanently delete the user
+            await prisma.user.delete({
+                where: { id }
+            });
+
+            return NextResponse.json({ success: true, message: 'User permanently deleted' });
+        } else {
+            // Soft delete - just deactivate
+            await prisma.user.update({
+                where: { id },
+                data: { isActive: false }
+            });
+
+            return NextResponse.json({ success: true, message: 'User deactivated' });
+        }
     } catch (error) {
-        console.error('Error deactivating user:', error);
+        console.error('Error deleting user:', error);
         return NextResponse.json(
-            { error: 'Failed to deactivate user' },
+            { error: 'Failed to delete user' },
             { status: 500 }
         );
     }

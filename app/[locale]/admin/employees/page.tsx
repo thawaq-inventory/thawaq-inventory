@@ -187,6 +187,24 @@ export default function EmployeesPage() {
         }
     };
 
+    const handlePermanentDelete = async (id: string) => {
+        if (!confirm('⚠️ PERMANENT DELETE: This will remove the employee and all their data forever. This action cannot be undone.\n\nAre you absolutely sure?')) return;
+
+        try {
+            const res = await fetch(`/api/admin/users/${id}?permanent=true`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) throw new Error('Failed to delete employee');
+
+            setSuccess('Employee permanently deleted');
+            fetchEmployees();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (error) {
+            setError('Failed to delete employee');
+        }
+    };
+
     return (
         <div className="p-6 max-w-6xl mx-auto">
             <div className="mb-6 flex items-center justify-between">
@@ -431,6 +449,15 @@ export default function EmployeesPage() {
                                                 Deactivate
                                             </Button>
                                         )}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePermanentDelete(employee.id)}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                        >
+                                            <X className="w-4 h-4 mr-1" />
+                                            Delete
+                                        </Button>
                                     </div>
                                 </div>
                             ))}

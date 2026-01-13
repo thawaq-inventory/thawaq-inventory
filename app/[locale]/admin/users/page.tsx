@@ -172,6 +172,24 @@ export default function UsersManagementPage() {
         }
     };
 
+    const handlePermanentDelete = async (id: string) => {
+        if (!confirm('⚠️ PERMANENT DELETE: This will remove the user and all their data forever. This action cannot be undone.\n\nAre you absolutely sure?')) return;
+
+        try {
+            const res = await fetch(`/api/admin/users/${id}?permanent=true`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) throw new Error('Failed to delete user');
+
+            setSuccess('User permanently deleted');
+            fetchUsers();
+            setTimeout(() => setSuccess(''), 3000);
+        } catch (error) {
+            setError('Failed to delete user');
+        }
+    };
+
     const getRoleBadge = (user: User) => {
         if (user.isSuperAdmin) {
             return <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">👑 Super Admin</span>;
@@ -425,6 +443,15 @@ export default function UsersManagementPage() {
                                                 Deactivate
                                             </Button>
                                         )}
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePermanentDelete(user.id)}
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                        >
+                                            <X className="w-4 h-4 mr-1" />
+                                            Delete
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
