@@ -66,6 +66,11 @@ export default async function InventoryPage() {
                             </button>
                         </Link>
                         <RecordWasteDialog branchId={currentBranchId} />
+                        <Link href="/admin/inventory/wastage-report">
+                            <button title="Wastage Report" className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-md transition-colors text-sm font-medium border border-slate-200">
+                                <TrendingUp className="w-4 h-4 text-slate-500" />
+                            </button>
+                        </Link>
                     </div>
                 )}
             </div>
