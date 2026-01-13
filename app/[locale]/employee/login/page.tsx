@@ -12,6 +12,8 @@ interface Employee {
     name: string;
 }
 
+// ... imports
+
 export default function EmployeeLoginPage() {
     const t = useTranslations('Employee');
     const router = useRouter();
@@ -21,6 +23,10 @@ export default function EmployeeLoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Multi-Branch State
+    const [showBranchSelection, setShowBranchSelection] = useState(false);
+    const [availableBranches, setAvailableBranches] = useState<any[]>([]);
+
     useEffect(() => {
         fetchEmployees();
     }, []);
@@ -29,7 +35,6 @@ export default function EmployeeLoginPage() {
         try {
             const res = await fetch('/api/employee/list');
             const data = await res.json();
-            // Data is already filtered by the API
             setEmployees(data);
         } catch (error) {
             console.error('Error fetching employees:', error);
@@ -47,7 +52,7 @@ export default function EmployeeLoginPage() {
         setError('');
     };
 
-    const handleLogin = async () => {
+    const handleLogin = async (overrideBranchId?: string) => {
         if (!selectedEmployeeId) {
             setError('Please select an employee');
             return;
@@ -68,33 +73,93 @@ export default function EmployeeLoginPage() {
                 body: JSON.stringify({
                     employeeId: selectedEmployeeId,
                     pinCode: pin,
+                    branchId: overrideBranchId // Optional: send if selecting branch
                 }),
             });
 
-            if (!res.ok) {
-                throw new Error('Invalid PIN');
-            }
-
             const data = await res.json();
 
-            // Store employee info in localStorage
-            localStorage.setItem('employeeSession', JSON.stringify(data));
+            if (!res.ok) {
+                // If specific error from API
+                throw new Error(data.error || 'Invalid PIN');
+            }
 
-            // Redirect to employee home
+            // check if branch selection is needed
+            if (data.requiresBranchSelection) {
+                setAvailableBranches(data.availableBranches);
+                setShowBranchSelection(true);
+                setLoading(false);
+                return;
+            }
+
+            // Success
+            localStorage.setItem('employeeSession', JSON.stringify(data));
             router.push('/employee');
-        } catch (error) {
-            setError('Invalid PIN. Please try again.');
-            setPin('');
+        } catch (error: any) {
+            setError(error.message || 'Invalid PIN. Please try again.');
+            if (!showBranchSelection) setPin('');
         } finally {
-            setLoading(false);
+            // Only stop loading if we aren't showing branch selection (wait for user input)
+            // Actually we stopped loading inside if branch selection showed.
+            if (!showBranchSelection) setLoading(false);
         }
     };
 
+    const handleBranchSelect = (branchId: string) => {
+        handleLogin(branchId);
+    };
+
+    const handleBackToLogin = () => {
+        setShowBranchSelection(false);
+        setLoading(false);
+        setPin('');
+    };
+
     useEffect(() => {
-        if (pin.length === 4 && selectedEmployeeId) {
+        // Only auto-submit if NOT in branch selection mode
+        if (pin.length === 4 && selectedEmployeeId && !showBranchSelection) {
             handleLogin();
         }
     }, [pin]);
+
+    if (showBranchSelection) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+                <Card className="w-full max-w-lg">
+                    <CardHeader className="text-center">
+                        <Users className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+                        <CardTitle className="text-2xl">Select Location</CardTitle>
+                        <CardDescription>Where are you working today?</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-3">
+                            {availableBranches.map((branch) => (
+                                <button
+                                    key={branch.id}
+                                    onClick={() => handleBranchSelect(branch.id)}
+                                    className="w-full p-4 text-left border rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-all group"
+                                >
+                                    <div className="font-semibold text-lg text-slate-900 group-hover:text-blue-700">
+                                        {branch.name}
+                                    </div>
+                                    <div className="text-sm text-slate-500">
+                                        Code: {branch.code}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="w-full mt-4"
+                            onClick={handleBackToLogin}
+                        >
+                            Back to Login
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-6">

@@ -77,35 +77,89 @@ export async function POST(request: NextRequest) {
 
         console.log('Login successful for:', employee.name);
 
-        // Get the user's branch ID for session
-        let branchId = null;
-        const userWithBranch = await prisma.user.findUnique({
+        // ... (PIN Verification passed)
+
+        console.log('Login successful for:', employee.name);
+
+        // Get ALL user branches
+        const userWithBranches = await prisma.user.findUnique({
             where: { id: employee.id },
-            select: {
-                branchId: true,
+            include: {
+                branch: true, // Legacy
                 userBranches: {
-                    select: { branchId: true },
-                    take: 1
+                    include: { branch: true }
                 }
             }
         });
 
-        // Prefer legacy branchId, fallback to first UserBranch
-        branchId = userWithBranch?.branchId || userWithBranch?.userBranches[0]?.branchId || null;
+        const availableBranches: any[] = [];
+        if (userWithBranches?.branch) {
+            availableBranches.push(userWithBranches.branch);
+        }
+        userWithBranches?.userBranches.forEach(ub => {
+            if (!availableBranches.find(b => b.id === ub.branchId)) {
+                availableBranches.push(ub.branch);
+            }
+        });
 
-        console.log('Employee branchId:', branchId);
+        // Check if branch selection is needed
+        // If > 1 branch and no specific branch selected in request
+        const { branchId: selectedBranchId } = body; // Optional param from client
+
+        if (availableBranches.length > 1 && !selectedBranchId) {
+            return NextResponse.json({
+                user: {
+                    id: employee.id,
+                    name: employee.name,
+                    username: employee.username
+                },
+                requiresBranchSelection: true,
+                availableBranches: availableBranches.map(b => ({
+                    id: b.id,
+                    name: b.name,
+                    code: b.code
+                }))
+            });
+        }
+
+        // Determine Final Branch ID
+        let finalBranchId = null;
+
+        if (selectedBranchId) {
+            // Verify user has access to this branch
+            const isValid = availableBranches.find(b => b.id === selectedBranchId);
+            if (!isValid) {
+                return NextResponse.json(
+                    { error: 'Invalid branch selection' },
+                    { status: 403 }
+                );
+            }
+            finalBranchId = selectedBranchId;
+        } else if (availableBranches.length === 1) {
+            finalBranchId = availableBranches[0].id;
+        } else if (availableBranches.length === 0) {
+            return NextResponse.json(
+                { error: 'No active branches assigned to this employee' },
+                { status: 403 }
+            );
+        } else {
+            // Fallback (should be covered by requiresBranchSelection, but safety check)
+            finalBranchId = availableBranches[0].id;
+        }
+
+        console.log('Employee final login branchId:', finalBranchId);
 
         // Return employee session data WITH branchId
         const response = NextResponse.json({
             id: employee.id,
             name: employee.name,
             username: employee.username,
-            branchId: branchId  // Include branchId in session for clock in
+            branchId: finalBranchId
         });
 
-        if (branchId) {
+        if (finalBranchId) {
             // Set the cookie for branch filtering
-            const cookieValue = JSON.stringify([branchId]);
+            const cookieValue = JSON.stringify([finalBranchId]);
             response.cookies.set('selectedBranches', cookieValue, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
@@ -113,7 +167,7 @@ export async function POST(request: NextRequest) {
                 path: '/',
                 maxAge: 60 * 60 * 24 * 7 // 1 week
             });
-            console.log('Set branch context cookie for employee:', branchId);
+            console.log('Set branch context cookie for employee:', finalBranchId);
         }
 
         return response;
