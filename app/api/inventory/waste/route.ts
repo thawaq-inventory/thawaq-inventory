@@ -72,54 +72,58 @@ export async function POST(request: NextRequest) {
             });
 
             // 4. Create Journal Entry (Financials)
-            // Need Accounts: Inventory (Asset) vs Waste (Expense)
-            // We will Try to find them or create defaults if missing
 
-            // Helper to get/create account
-            const getAccount = async (code: string, name: string, type: string) => {
-                let acc = await tx.account.findUnique({ where: { code } });
-                if (!acc) {
-                    acc = await tx.account.create({
-                        data: { code, name, type }
-                    });
-                }
-                return acc;
+            // Helper to get Account from Mapping
+            const getMappedAccount = async (key: string, defaultCode: string) => {
+                const mapping = await tx.accountingMapping.findUnique({
+                    where: { eventKey: key },
+                    include: { account: true }
+                });
+                if (mapping) return mapping.account;
+
+                // Fallback: Try finding by code
+                return await tx.account.findUnique({ where: { code: defaultCode } });
             };
 
-            const inventoryAccount = await getAccount('1200', 'Inventory Asset', 'ASSET');
+            const inventoryAccount = await getMappedAccount('INVENTORY_ASSET_DEFAULT', '1200');
 
-            // Determine Expense Account based on reason
-            let expenseCode = '5100'; // COGS / Waste default
-            let expenseName = 'Cost of Goods Sold - Waste';
+            // Determine Expense Key
+            let expenseKey = 'WASTE_EXPENSE';
+            let defaultExpenseCode = '6000';
 
             if (reason === 'Staff Meal') {
-                expenseCode = '5200';
-                expenseName = 'Employee Benefits';
+                expenseKey = 'STAFF_MEAL_EXPENSE';
+                defaultExpenseCode = '6010';
             }
 
-            const expenseAccount = await getAccount(expenseCode, expenseName, 'EXPENSE');
+            const expenseAccount = await getMappedAccount(expenseKey, defaultExpenseCode);
 
-            await tx.journalEntry.create({
-                data: {
-                    description: `Inventory Waste: ${product?.name || 'Item'} (${reason})`,
-                    reference: 'WASTE-' + Date.now(),
-                    date: new Date(),
-                    lines: {
-                        create: [
-                            {
-                                accountId: expenseAccount.id,
-                                debit: totalValue,
-                                credit: 0
-                            },
-                            {
-                                accountId: inventoryAccount.id,
-                                debit: 0,
-                                credit: totalValue
-                            }
-                        ]
+            if (!inventoryAccount || !expenseAccount) {
+                // Log warning but don't fail transaction if accounts missing (soft error)
+                console.warn('Missing Accounting Configuration for Waste. Skipping Journal Entry.');
+            } else {
+                await tx.journalEntry.create({
+                    data: {
+                        description: `Inventory Waste: ${product?.name || 'Item'} (${reason})`,
+                        reference: 'WASTE-' + Date.now(),
+                        date: new Date(),
+                        lines: {
+                            create: [
+                                {
+                                    accountId: expenseAccount.id,
+                                    debit: totalValue,
+                                    credit: 0
+                                },
+                                {
+                                    accountId: inventoryAccount.id,
+                                    debit: 0,
+                                    credit: totalValue
+                                }
+                            ]
+                        }
                     }
-                }
-            });
+                });
+            }
 
             return { success: true };
         });

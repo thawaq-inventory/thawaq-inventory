@@ -226,6 +226,10 @@ export function AdminLayoutClient({
                         <NavLink href="/admin/expenses" icon={Receipt}>
                             Expenses
                         </NavLink>
+
+                        <NavLink href="/admin/accounting/settings" icon={Settings}>
+                            Settings (Mappings)
+                        </NavLink>
                     </div>
 
                     {/* ===== SECTION 3: EMPLOYEES ===== */}
