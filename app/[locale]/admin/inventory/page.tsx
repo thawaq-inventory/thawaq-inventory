@@ -45,7 +45,23 @@ export default async function InventoryPage() {
                     </p>
                 </div>
                 {isKitchen && currentBranchId && (
-                    <ProductionDialog branchId={currentBranchId} />
+                    <div className="flex gap-2">
+                        <Link href="/admin/inventory/stock-count">
+                            <button className="flex items-center gap-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-md transition-colors text-sm font-medium">
+                                <Package className="w-4 h-4" />
+                                Stock Take
+                            </button>
+                        </Link>
+                        <ProductionDialog branchId={currentBranchId} />
+                    </div>
+                )}
+                {!isKitchen && currentBranchId && currentBranchId !== 'HEAD_OFFICE' && (
+                    <Link href="/admin/inventory/stock-count">
+                        <button className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md transition-colors text-sm font-medium">
+                            <Package className="w-4 h-4" />
+                            Start Stock Take
+                        </button>
+                    </Link>
                 )}
             </div>
 
