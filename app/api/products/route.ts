@@ -40,30 +40,52 @@ export async function GET(request: NextRequest) {
             ];
         }
 
-        // We do NOT filter products by branchId anymore, because Products are global catalog items.
-        // We only filter the included InventoryLevel.
+        let products;
 
-        const products = await prisma.product.findMany({
-            where: whereClause,
-            include: {
-                // effective Left Join
-                inventoryLevels: {
-                    where: { branchId: currentBranchId || 'undefined_branch' }, // Empty if no branch selected
-                    take: 1
-                }
-            },
-            orderBy: { name: 'asc' }
-        });
+        if (currentBranchId === 'HEAD_OFFICE') {
+            // Global View: Fetch all products with ALL stock levels to sum them up
+            products = await prisma.product.findMany({
+                where: whereClause,
+                include: {
+                    inventoryLevels: true // Fetch ALL levels
+                },
+                orderBy: { name: 'asc' }
+            });
+        } else {
+            // Specific Branch View: Fetch products with specific stock level
+            products = await prisma.product.findMany({
+                where: whereClause,
+                include: {
+                    inventoryLevels: {
+                        where: { branchId: currentBranchId || 'undefined_branch' },
+                        take: 1
+                    }
+                },
+                orderBy: { name: 'asc' }
+            });
+        }
 
         // Transform result to match expected frontend interface
         const mappedProducts = products.map(p => {
-            const level = p.inventoryLevels[0];
+            let stockLevel = 0;
+            let reorderPoint = 0;
+
+            if (currentBranchId === 'HEAD_OFFICE') {
+                // Sum up ALL inventory levels
+                stockLevel = p.inventoryLevels.reduce((sum, level) => sum + level.quantityOnHand, 0);
+                // For reorder point, maybe take the max or average? Or just 0 for global view?
+                // Let's use max for now to be safe, or 0.
+                reorderPoint = 0;
+            } else {
+                const level = p.inventoryLevels[0];
+                stockLevel = level ? level.quantityOnHand : 0;
+                reorderPoint = level ? level.reorderPoint : 0;
+            }
+
             return {
                 ...p,
-                // Override legacy stockLevel with the actual InventoryLevel for this branch
-                stockLevel: level ? level.quantityOnHand : 0,
-                // Include other fields if needed
-                reorderPoint: level ? level.reorderPoint : 0
+                stockLevel,
+                reorderPoint
             };
         });
 

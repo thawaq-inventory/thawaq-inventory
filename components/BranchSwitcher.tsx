@@ -37,8 +37,22 @@ export default function BranchSwitcher({ userBranchId, isSuperAdmin }: BranchSwi
             }
             const data = await res.json();
             // Ensure data is an array before filtering
+            const data = await res.json();
+            // Ensure data is an array before filtering
             if (Array.isArray(data)) {
-                setBranches(data.filter((b: Branch) => b.isActive));
+                let activeBranches = data.filter((b: Branch) => b.isActive);
+
+                // Inject Head Office for Superadmin
+                if (isSuperAdmin) {
+                    activeBranches.unshift({
+                        id: 'HEAD_OFFICE',
+                        name: 'Head Office / Global View',
+                        code: 'HQ',
+                        isActive: true
+                    });
+                }
+
+                setBranches(activeBranches);
             } else {
                 console.error('Invalid branches data format:', data);
                 setBranches([]);
@@ -130,6 +144,9 @@ export default function BranchSwitcher({ userBranchId, isSuperAdmin }: BranchSwi
     const getSelectedBranchesText = () => {
         if (selectedBranches.includes('all')) {
             return 'All Branches';
+        }
+        if (selectedBranches.includes('HEAD_OFFICE')) {
+            return 'Head Office / Global View';
         }
         if (selectedBranches.length === 0 && userBranchId) {
             const userBranch = branches.find(b => b.id === userBranchId);

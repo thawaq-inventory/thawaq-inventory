@@ -37,6 +37,11 @@ export async function POST(request: NextRequest) {
         let hasAccess = false;
         if (user.isSuperAdmin) {
             hasAccess = true;
+        } else if (branchId === 'HEAD_OFFICE') {
+            // Only Superadmins can access HEAD_OFFICE (already covered by isSuperAdmin check above, 
+            // but keeping this explicit structure for clarity if we change logic).
+            // Actually, if !isSuperAdmin, they shouldn't be able to select HEAD_OFFICE.
+            if (user.isSuperAdmin) hasAccess = true;
         } else {
             // Check legacy branch
             if (user.branchId === branchId) hasAccess = true;

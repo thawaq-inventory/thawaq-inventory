@@ -64,6 +64,14 @@ export async function POST(request: NextRequest) {
                 where: { isActive: true },
                 select: { id: true, name: true, code: true, type: true }
             });
+
+            // Add Virtual "Head Office" Branch
+            availableBranches.unshift({
+                id: 'HEAD_OFFICE',
+                name: 'Head Office / Global View',
+                code: 'HQ',
+                type: 'HEAD_OFFICE'
+            });
         } else {
             // Collect assigned branches
             // 1. Legacy branch
