@@ -18,6 +18,8 @@ export default function AdminLoginPage() {
     const [userId, setUserId] = useState('');
     const [secret, setSecret] = useState('');
 
+    const [rememberMe, setRememberMe] = useState(false);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -27,7 +29,7 @@ export default function AdminLoginPage() {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, rememberMe }),
             });
 
             const data = await res.json();
@@ -182,6 +184,20 @@ export default function AdminLoginPage() {
                                 placeholder="Enter your password"
                                 autoComplete="current-password"
                             />
+                        </div>
+
+                        <div className="flex items-center">
+                            <input
+                                id="remember-me"
+                                name="remember-me"
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                                Remember me
+                            </label>
                         </div>
 
                         <button

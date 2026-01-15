@@ -44,6 +44,7 @@ export function AdminLayoutClient({
     locale: string;
 }) {
     const t = useTranslations('Admin');
+    const router = useRouter();
     const pathname = usePathname();
     const [inventoryOpen, setInventoryOpen] = useState(pathname?.includes('/inventory'));
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -55,6 +56,13 @@ export function AdminLayoutClient({
         const fetchUser = async () => {
             try {
                 const res = await fetch('/api/auth/me');
+
+                if (res.status === 401) {
+                    // Not authenticated, redirect to login
+                    router.push('/admin/login');
+                    return;
+                }
+
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user?.name) {

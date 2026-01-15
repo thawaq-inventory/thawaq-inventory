@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 // POST /api/auth/login
 export async function POST(request: NextRequest) {
     try {
-        const { username, password } = await request.json();
+        const { username, password, rememberMe } = await request.json();
 
         if (!username || !password) {
             return NextResponse.json(
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         // Create session token
         const token = crypto.randomBytes(32).toString('hex');
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days (Database record always keeps 7 days for safety)
 
         await prisma.session.create({
             data: {
@@ -131,23 +131,22 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // Set HTTP-only auth cookie
-        const cookie = serialize('auth_token', token, {
+        // Set Cookies
+        // If rememberMe is true, set maxAge to 7 days.
+        // If false, do not set maxAge (session cookie).
+        const cookieOptions: any = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60, // 7 days
             path: '/'
-        });
+        };
 
-        // Set Branch Context Cookie
-        const branchCookie = serialize('selectedBranches', JSON.stringify([targetBranchId]), {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60,
-            path: '/'
-        });
+        if (rememberMe) {
+            cookieOptions.maxAge = 7 * 24 * 60 * 60; // 7 days
+        }
+
+        const cookie = serialize('auth_token', token, cookieOptions);
+        const branchCookie = serialize('selectedBranches', JSON.stringify([targetBranchId]), cookieOptions);
 
         const response = NextResponse.json({
             user: {

@@ -1,5 +1,5 @@
 
-import { PrismaClient } from '@prisma/client';
+const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
@@ -59,6 +59,8 @@ async function main() {
         { key: 'WASTE_EXPENSE', code: '6000', desc: 'General Wastage Account' },
         { key: 'STAFF_MEAL_EXPENSE', code: '6010', desc: 'Account for Staff Meals' },
         { key: 'SALES_DEFAULT', code: '4000', desc: 'Default Sales Revenue Account' },
+        { key: 'INVENTORY_ADJUSTMENT', code: '6020', desc: 'Shrinkage/Overage Account' },
+        { key: 'ACCOUNTS_PAYABLE', code: '2000', desc: 'Default AP Account' }
     ];
 
     console.log('Seeding Mappings...');
