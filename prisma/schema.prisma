@@ -57,6 +57,7 @@ model Branch {
   destTransactions   InventoryTransaction[] @relation("DestBranch")
   transfersFrom      TransferRequest[]      @relation("TransferFromBranch")
   transfersTo        TransferRequest[]      @relation("TransferToBranch")
+  salesReports       SalesReport[]
 }
 
 model User {
@@ -126,6 +127,8 @@ model Product {
   // Foodics Integration
   foodicsId   String?  @unique
   
+  isArchived  Boolean  @default(false)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -143,6 +146,9 @@ model Product {
   inventoryLevels InventoryLevel[]
   inventoryTransactions InventoryTransaction[]
   transferItems TransferItem[]
+  
+  // Recipe Mapping
+  productMappings ProductMapping[]
 }
 
 // ... (Existing models like InventoryLog, FoodicsConfig, Accounting models remain unchanged)
@@ -694,4 +700,54 @@ model ClockEntry {
   @@index([userId])
   @@index([branchId])
   @@index([clockInTime])
+}
+
+// Recipe Map for Sales Import
+model ProductMapping {
+  id            String   @id @default(uuid())
+  posString     String   @unique // The exact text from POS (e.g. "Spicy Zinger")
+  
+  // What to deduct
+  product       Product? @relation(fields: [productId], references: [id])
+  productId     String?  // The SKU/Product in our system
+  
+  quantity      Float    @default(1) // Amount to deduct
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([posString])
+}
+
+// POS Price List (Table A)
+model PosMenuItem {
+  id            String   @id @default(uuid())
+  posString     String   @unique // The exact text from POS
+  sellingPrice  Float    @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([posString])
+}
+
+// Sales History Report Log
+model SalesReport {
+  id              String   @id @default(uuid())
+  fileName        String
+  uploadDate      DateTime @default(now()) 
+  reportDate      DateTime? // Extracted from file
+  
+  totalRevenue    Float    @default(0)
+  totalCOGS       Float    @default(0)
+  variance        Float    @default(0)
+  
+  status          String   @default("SUCCESS") // SUCCESS, FAILED
+  errorDetails    String?
+  
+  branch          Branch   @relation(fields: [branchId], references: [id])
+  branchId        String
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

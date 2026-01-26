@@ -40,6 +40,9 @@ export async function GET(request: NextRequest) {
             ];
         }
 
+        // Feature 4: Filter out archived
+        whereClause.isArchived = false;
+
         let products;
 
         if (currentBranchId === 'HEAD_OFFICE') {
