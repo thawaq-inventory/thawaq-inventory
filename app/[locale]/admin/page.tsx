@@ -61,8 +61,8 @@ export default function DashboardPage() {
     return (
         <div className="max-w-7xl mx-auto space-y-6">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Dashboard</h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">Welcome to Al Thawaq Accounting System</p>
+                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+                <p className="text-slate-500 mt-1">Welcome to Al Thawaq Accounting System</p>
             </div>
 
             {/* Key Metrics */}
@@ -202,24 +202,24 @@ export default function DashboardPage() {
                 <CardContent>
                     <div className="space-y-3">
                         <div className="flex items-start gap-3">
-                            <div className="w-6 h-6 rounded-full bg-slate-900 dark:bg-white dark:text-black text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
+                            <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
                             <div>
-                                <h4 className="font-medium text-slate-900 dark:text-white">Add Vendors</h4>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Set up your suppliers in the Vendors section</p>
+                                <h4 className="font-medium text-slate-900">Add Vendors</h4>
+                                <p className="text-sm text-slate-600">Set up your suppliers in the Vendors section</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
-                            <div className="w-6 h-6 rounded-full bg-slate-900 dark:bg-white dark:text-black text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
+                            <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
                             <div>
-                                <h4 className="font-medium text-slate-900 dark:text-white">Record Invoices</h4>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Upload and record your purchase invoices</p>
+                                <h4 className="font-medium text-slate-900">Record Invoices</h4>
+                                <p className="text-sm text-slate-600">Upload and record your purchase invoices</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
-                            <div className="w-6 h-6 rounded-full bg-slate-900 dark:bg-white dark:text-black text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
+                            <div className="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
                             <div>
-                                <h4 className="font-medium text-slate-900 dark:text-white">View Reports</h4>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">Monitor your financial performance with P&L reports</p>
+                                <h4 className="font-medium text-slate-900">View Reports</h4>
+                                <p className="text-sm text-slate-600">Monitor your financial performance with P&L reports</p>
                             </div>
                         </div>
                     </div>

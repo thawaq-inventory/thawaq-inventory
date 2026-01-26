@@ -11,90 +11,39 @@ body {
   overflow-x: hidden;
 }
 
-/* Professional Minimalist Palette - Slate & White */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  /* Professional Minimalist Palette - Slate & White */
+  --background: #ffffff;
+  --foreground: #0f172a;
+  /* Slate-900 */
 
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --primary: #0f172a;
+  /* Slate-900 */
+  --primary-foreground: #ffffff;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
+  --secondary: #f1f5f9;
+  /* Slate-100 */
+  --secondary-foreground: #0f172a;
 
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
+  --accent: #f8fafc;
+  /* Slate-50 */
+  --accent-foreground: #0f172a;
 
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: #f8fafc;
+  /* Slate-50 */
+  --muted-foreground: #64748b;
+  /* Slate-500 */
 
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
 
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
+  --border: #e2e8f0;
+  /* Slate-200 */
+  --input: #e2e8f0;
+  --ring: #0f172a;
 
   --radius: 0.5rem;
-
-  /* Shared Colors / Theme Vars */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-
-  /* Subtle animations only */
-  --animate-fade-in: fade-in 0.3s ease-out;
-}
-
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  /* Smaller radius for professional look */
 
   /* BOLD Modern Accounting Color Palette - Inspired by Al Thawaq Brand */
   --color-primary-blue: #0ea5e9;
@@ -137,9 +86,30 @@ body {
   --gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
 }
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 
+  /* Subtle animations only */
+  --animate-fade-in: fade-in 0.3s ease-out;
+}
 
-/* Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -158,37 +128,23 @@ body {
   /* Removed background patterns/gradients for cleanliness */
 }
 
+/* Minimalist Utilities */
 .dashboard-card {
   background: white;
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  /* Softer shadow */
   transition: box-shadow 0.2s ease-in-out;
 }
 
-.dark .dashboard-card {
-  background-color: #151B28;
-  border-color: rgba(255, 255, 255, 0.05);
-  box-shadow: none;
-}
-
 .dashboard-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
-}
-
-.dark .dashboard-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-  background-color: #1a202e;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -1px rgb(0 0 0 / 0.05);
 }
 
 .glass-card {
   background: white;
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.dark .glass-card {
-  background-color: #151B28;
-  border-color: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 /* Typography refinements */
