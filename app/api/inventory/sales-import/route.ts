@@ -1,12 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseUpload } from '@/lib/parsers/file-parser';
-import { parseSalesReportLine, ParsedItem } from '@/lib/parsers/sales-report-parser';
+import { parseSalesReportLine, parseTabSenseItems, ParsedItem } from '@/lib/parsers/sales-report-parser';
 
 // Normalized Headers expected
 interface SalesRow {
-    order_items: string;
-    order_value: string | number;
+    // Standard Format
+    order_items?: string;
+    order_value?: string | number;
+
+    // TabSense Format
+    created_at?: string;
+    items_breakdown?: string;
+    total?: string | number;
+    gross_sales?: string | number;
+    discount?: string | number;
+    tip_amount?: string | number;
+    taxes?: string | number;
+    order_charge?: string | number;
+    cash?: string | number;
+    visa?: string | number;
+
+    // Common
     [key: string]: any;
 }
 
@@ -34,17 +49,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'File Parse Error', details: errors }, { status: 400 });
         }
 
-        // --- DATE PARSING LOGIC (Column J Specific) ---
+        // --- DATE PARSING LOGIC ---
         let reportDate: Date = new Date(); // Default to now
         let dateSourceString = "System Today";
 
         // Try to find a date in the first valid row content
-        // We look at the raw data *before* filtering to find the date column
         if (rawData.length > 0) {
             const firstRow = rawData[0];
 
-            // 1. Check Headers aliases
-            const dateVal = firstRow['Date'] || firstRow['date'] || firstRow['Business Date'] || firstRow['Time'];
+            // 1. Check Headers aliases (including TabSense 'created_at')
+            const dateVal = firstRow['Date'] || firstRow['date'] || firstRow['Business Date'] || firstRow['Time'] || firstRow['created_at'];
 
             if (dateVal) {
                 // Try parse
@@ -54,11 +68,8 @@ export async function POST(req: NextRequest) {
                     dateSourceString = `Header (${dateVal})`;
                 }
             } else {
-                // 2. Hard Fallback: Column Index 9 (J)
-                // parseUpload might return object properties based on header names.
-                // If headers didn't match, we might have to rely on `Unknown Header` logic or check the raw CSV if possible.
-                // However, `papaparse` with `header: true` relies on header names.
-                // If user says "Column J", in a JSON object it's the 10th key.
+                // 2. Hard Fallback: Column Index 9 (J) 
+                // We keep this for the legacy format just in case, but TabSense overrides this via 'created_at' if found.
                 const keys = Object.keys(firstRow);
                 if (keys.length > 9) {
                     const colJKey = keys[9];
@@ -73,8 +84,11 @@ export async function POST(req: NextRequest) {
         }
 
         // Safety Check 1: Filter Empty Rows
+        // Must contain EITHER 'order_items' (Legacy) OR 'items_breakdown' (TabSense)
         const data = rawData.filter(row => {
-            return row.order_items && String(row.order_items).trim() !== '';
+            const legacy = row.order_items && String(row.order_items).trim() !== '';
+            const tabsense = row.items_breakdown && String(row.items_breakdown).trim() !== '';
+            return legacy || tabsense;
         });
 
         if (data.length === 0) {
@@ -90,18 +104,30 @@ export async function POST(req: NextRequest) {
         for (const row of data) {
             rowIndex++;
             try {
-                const orderItemsStr = String(row.order_items || "");
-
-                if (!orderItemsStr.trim()) continue;
-
-                // Clean up revenue 
+                let items: ParsedItem[] = [];
                 let declaredRevenue = 0;
-                if (row.order_value) {
-                    const cleanVal = String(row.order_value).replace(/[^0-9.-]+/g, '');
-                    declaredRevenue = parseFloat(cleanVal) || 0;
+
+                // A. DETECT AND PARSE TABSENSE
+                if (row.items_breakdown) {
+                    items = parseTabSenseItems(String(row.items_breakdown));
+
+                    // Parse Revenue
+                    // Use Total or Gross Sales? User specified "Total".
+                    const val = row.total || row.gross_sales || '0';
+                    declaredRevenue = parseFloat(String(val).replace(/[^0-9.-]+/g, '')) || 0;
+                }
+                // B. LEGACY FORMAT
+                else if (row.order_items) {
+                    items = parseSalesReportLine(String(row.order_items));
+
+                    if (row.order_value) {
+                        const cleanVal = String(row.order_value).replace(/[^0-9.-]+/g, '');
+                        declaredRevenue = parseFloat(cleanVal) || 0;
+                    }
+                } else {
+                    continue; // Should be filtered out already but extra safety
                 }
 
-                const items = parseSalesReportLine(orderItemsStr);
                 parsedRows.push({ items, declaredRevenue, rowIndex });
 
                 items.forEach(item => {

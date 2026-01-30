@@ -70,3 +70,49 @@ export function parseSalesReportLine(line: string): ParsedItem[] {
 
     return results;
 }
+
+/**
+ * Parses TabSense "Items Breakdown" column.
+ * - Items separated by \n
+ * - "Note:" indicates comments to be ignored (truncate line)
+ * - Returns aggregated quantities
+ */
+export function parseTabSenseItems(cellContent: string): ParsedItem[] {
+    if (!cellContent || typeof cellContent !== 'string') return [];
+
+    const lines = cellContent.split('\n');
+    const itemCounts = new Map<string, number>();
+
+    for (const line of lines) {
+        // 1. Remove Note content
+        // "Burger Note: No Cheese" -> "Burger "
+        // "Note: Allergy" -> ""
+        let cleanLine = line;
+
+        // Check for "Note:" or "note:" and truncate
+        const noteIndex = cleanLine.toLowerCase().indexOf('note:');
+        if (noteIndex !== -1) {
+            cleanLine = cleanLine.substring(0, noteIndex);
+        }
+
+        cleanLine = cleanLine.trim();
+
+        if (!cleanLine) continue;
+
+        // 2. Aggregate
+        const count = itemCounts.get(cleanLine) || 0;
+        itemCounts.set(cleanLine, count + 1);
+    }
+
+    // 3. Convert to ParsedItem format
+    const results: ParsedItem[] = [];
+    for (const [name, qty] of itemCounts.entries()) {
+        results.push({
+            qty: qty,
+            name: name,
+            modifiers: [] // TabSense format doesn't seem to separate modifiers clearly yet
+        });
+    }
+
+    return results;
+}
