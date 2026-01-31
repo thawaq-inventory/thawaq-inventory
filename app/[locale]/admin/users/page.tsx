@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Users, Plus, Edit, Trash2, Shield, UserPlus, X } from "lucide-react";
+import { BranchMultiSelect } from "@/components/accounting/BranchMultiSelect";
 
 interface Branch {
     id: string;
@@ -22,6 +23,7 @@ interface User {
     isSuperAdmin: boolean;
     branchId: string | null;
     branch?: Branch | null;
+    userBranches?: { branch: Branch }[];
     cliqAlias: string | null;
     hourlyRate: number | null;
     pinCode: string | null;
@@ -43,7 +45,8 @@ export default function UsersManagementPage() {
         pinCode: '',
         role: 'EMPLOYEE',
         isSuperAdmin: false,
-        branchId: '',
+        branchId: '', // Home Branch
+        accessBranchIds: [] as string[], // Additional Access
         cliqAlias: '',
         hourlyRate: '5',
     });
@@ -82,6 +85,7 @@ export default function UsersManagementPage() {
             role: 'EMPLOYEE',
             isSuperAdmin: false,
             branchId: '',
+            accessBranchIds: [],
             cliqAlias: '',
             hourlyRate: '5',
         });
@@ -100,12 +104,21 @@ export default function UsersManagementPage() {
             const url = editingId ? `/api/admin/users/${editingId}` : '/api/admin/users';
             const method = editingId ? 'PUT' : 'POST';
 
+            // Ensure accessBranchIds includes the Home Branch if selected
+            const finalAccessList = new Set(formData.accessBranchIds);
+            if (formData.branchId) {
+                finalAccessList.add(formData.branchId);
+            }
+
             const payload: any = {
                 name: formData.name,
                 username: formData.username,
                 role: formData.role,
                 isSuperAdmin: formData.isSuperAdmin,
+                // If super admin, branchId is null. Else, it's the selected Home Branch.
                 branchId: formData.isSuperAdmin ? null : (formData.branchId || null),
+                // Send the consolidated list of allowed branches
+                branchIds: formData.isSuperAdmin ? [] : Array.from(finalAccessList),
                 cliqAlias: formData.cliqAlias || null,
                 hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : 5.0,
                 pinCode: formData.pinCode,
@@ -140,6 +153,10 @@ export default function UsersManagementPage() {
 
     const handleEdit = (user: User) => {
         setEditingId(user.id);
+
+        // Map existing userBranches to ID list
+        const existingAccess = user.userBranches?.map(ub => ub.branch.id) || [];
+
         setFormData({
             name: user.name,
             username: user.username,
@@ -148,6 +165,7 @@ export default function UsersManagementPage() {
             role: user.role,
             isSuperAdmin: user.isSuperAdmin,
             branchId: user.branchId || '',
+            accessBranchIds: existingAccess,
             cliqAlias: user.cliqAlias || '',
             hourlyRate: user.hourlyRate?.toString() || '5',
         });
@@ -304,9 +322,9 @@ export default function UsersManagementPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <Label htmlFor="branch">Branch</Label>
+                                    <Label htmlFor="homeBranch">Home Branch (Payroll)</Label>
                                     <select
-                                        id="branch"
+                                        id="homeBranch"
                                         value={formData.branchId}
                                         onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
                                         disabled={formData.isSuperAdmin}
@@ -323,7 +341,22 @@ export default function UsersManagementPage() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            {/* Multi-Branch Access Selection */}
+                            {!formData.isSuperAdmin && (
+                                <div className="space-y-2">
+                                    <Label>Access Rights (Additional Branches)</Label>
+                                    <BranchMultiSelect
+                                        selectedBranches={formData.accessBranchIds}
+                                        onSelectionChange={(ids) => setFormData({ ...formData, accessBranchIds: ids })}
+                                        disabled={formData.isSuperAdmin}
+                                    />
+                                    <p className="text-xs text-slate-500">
+                                        Select all branches this user can log into. Home Branch is included automatically.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2 pt-2">
                                 <input
                                     type="checkbox"
                                     id="isSuperAdmin"
@@ -402,11 +435,19 @@ export default function UsersManagementPage() {
                                             {user.pinCode && <div className="text-xs text-slate-400 mt-0.5">PIN: {user.pinCode}</div>}
                                         </div>
                                         {getRoleBadge(user)}
-                                        {user.branch && (
-                                            <div className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
-                                                📍 {user.branch.name}
-                                            </div>
-                                        )}
+                                        <div className="flex flex-col gap-1">
+                                            {user.branch && (
+                                                <div className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700 w-fit">
+                                                    🏠 {user.branch.name}
+                                                </div>
+                                            )}
+                                            {user.userBranches && user.userBranches.length > 1 && (
+                                                <div className="px-2 py-1 bg-indigo-50 rounded text-xs text-indigo-700 w-fit">
+                                                    +{user.userBranches.length - 1} extra access
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {!user.isActive && (
                                             <div className="px-2 py-1 bg-red-50 rounded text-xs text-red-700">
                                                 Inactive
