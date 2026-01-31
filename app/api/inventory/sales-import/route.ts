@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
         // Filter valid data
         const data = rawData.filter(row => {
             const hasItems = (row.items_breakdown && String(row.items_breakdown).trim() !== '') || row.order_items;
-            const hasTotal = row.total || row.order_value;
+            const hasTotal = row.total || row.order_value || row.subtotal; // Added subtotal for Talabat
             return hasItems && hasTotal;
         });
 
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
                 error: 'No valid sales data found. Check your CSV headers.',
                 details: [
                     `Found Headers: ${foundHeaders}`,
-                    `Expected: items_breakdown (or order_items) AND total (or order_value)`
+                    `Expected: items_breakdown (or order_items) AND total (or order_value or subtotal)`
                 ]
             }, { status: 400 });
         }
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
 
             // --- WATERFALL CALCULATION ---
             // 1. Total Collected (Cash + Tax)
-            let rowTotal = getFloat(row.total);
+            let rowTotal = getFloat(row.total || row.subtotal); // Added subtotal for Talabat
             const rowTax = getFloat(row.taxes);
             const rowGrossInput = getFloat(row.gross_sales);
 
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
                 fees,
                 cogs: rowCOGS,
                 items: rowItems,
-                date: new Date(row.created_at || new Date())
+                date: new Date(row.created_at || row.order_received_at || new Date()) // Added order_received_at for Talabat
             });
         }
 
