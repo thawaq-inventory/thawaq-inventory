@@ -10,7 +10,11 @@ export async function getRecipes() {
         return await prisma.recipe.findMany({
             orderBy: { name: 'asc' },
             include: {
-                ingredients: true
+                ingredients: {
+                    include: {
+                        product: true
+                    }
+                }
             }
         });
     } catch (error) {
