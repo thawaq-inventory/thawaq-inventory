@@ -77,42 +77,76 @@ export function parseSalesReportLine(line: string): ParsedItem[] {
  * - "Note:" indicates comments to be ignored (truncate line)
  * - Returns aggregated quantities
  */
-export function parseTabSenseItems(cellContent: string): ParsedItem[] {
-    if (!cellContent || typeof cellContent !== 'string') return [];
+export function parseTabSenseItems(itemsString: string): ParsedItem[] {
+    if (!itemsString) return [];
 
-    // Robust split for Excel/CSV handling of newlines
-    const lines = cellContent.split(/\r\n|\n|\r/);
-    const itemCounts = new Map<string, number>();
+    // itemsString example 1 (Standard): "1x Burger (Cheese), 2x Fries"
+    // itemsString example 2 (Arabic/Simple): "ساندوش روست بيف, بطاطا, كولا Note: extra ice"
 
-    for (const line of lines) {
-        // 1. Remove Note content
-        // "Burger Note: No Cheese" -> "Burger "
-        // "Note: Allergy" -> ""
-        let cleanLine = line;
-
-        // Check for "Note:" or "note:" and truncate
-        const noteIndex = cleanLine.toLowerCase().indexOf('note:');
-        if (noteIndex !== -1) {
-            cleanLine = cleanLine.substring(0, noteIndex);
-        }
-
-        cleanLine = cleanLine.trim();
-
-        if (!cleanLine) continue;
-
-        // 2. Aggregate
-        const count = itemCounts.get(cleanLine) || 0;
-        itemCounts.set(cleanLine, count + 1);
-    }
-
-    // 3. Convert to ParsedItem format
     const results: ParsedItem[] = [];
-    for (const [name, qty] of itemCounts.entries()) {
-        results.push({
-            qty: qty,
-            name: name,
-            modifiers: [] // TabSense format doesn't seem to separate modifiers clearly yet
-        });
+
+    // Strategy 1: Standard "Quantity x Name" format
+    if (itemsString.match(/^\d+x/)) {
+        // Split by comma, but verify it's not inside parens if possible.
+        const parts = itemsString.split(/,\s*(?=\d+x)/); // Lookahead for next item start
+
+        for (const part of parts) {
+            const match = part.trim().match(/^(\d+)x\s+(.+)$/);
+            if (match) {
+                const qty = parseFloat(match[1]);
+                const rawName = match[2];
+                const nameParts = rawName.split('(');
+                const baseName = nameParts[0].trim();
+
+                const modifiers: { qty: number; name: string }[] = [];
+                if (nameParts.length > 1) {
+                    for (let i = 1; i < nameParts.length; i++) {
+                        const modName = nameParts[i].replace(')', '').trim();
+                        if (modName) {
+                            modifiers.push({ qty: 1, name: modName });
+                        }
+                    }
+                }
+
+                results.push({
+                    name: baseName,
+                    qty: qty,
+                    modifiers: modifiers
+                });
+            }
+        }
+    } else {
+        // Strategy 2: Comma Separated String (Legacy/Arabic)
+        // Split by comma
+        // Handle newlines too just in case
+        const separators = /[\n,]/;
+        const parts = itemsString.split(separators);
+
+        for (const p of parts) {
+            let clean = p.trim();
+            if (!clean) continue;
+
+            // Handle "Note:" or "Notes:" suffix and strip it
+            const noteIndex = clean.toLowerCase().indexOf('note:');
+            if (noteIndex > -1) {
+                clean = clean.substring(0, noteIndex).trim();
+            }
+            const notesIndex = clean.toLowerCase().indexOf('notes:');
+            if (notesIndex > -1) {
+                clean = clean.substring(0, notesIndex).trim();
+            }
+
+            // Strip parens
+            clean = clean.split('(')[0].trim();
+
+            if (clean) {
+                results.push({
+                    name: clean,
+                    qty: 1,
+                    modifiers: []
+                });
+            }
+        }
     }
 
     return results;
