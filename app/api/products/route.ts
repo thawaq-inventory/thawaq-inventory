@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
             whereClause.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
                 { sku: { contains: search, mode: 'insensitive' } },
+                { arabicName: { contains: search, mode: 'insensitive' } }, // Arabic search support
             ];
         }
 

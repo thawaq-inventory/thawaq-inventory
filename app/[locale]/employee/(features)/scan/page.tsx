@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useProductName, useUnitName } from '@/hooks/use-localization';
 
 export default function ScanPage() {
     const t = useTranslations('Employee');
@@ -79,12 +80,12 @@ export default function ScanPage() {
                             <div className="mt-6 p-6 border rounded-xl bg-white shadow-sm">
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900">{scannedProduct.name}</h3>
+                                        <h3 className="text-lg font-bold text-slate-900">{useProductName(scannedProduct)}</h3>
                                         <p className="text-slate-500 font-mono text-sm">{scannedProduct.sku}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-2xl font-bold text-slate-900">{scannedProduct.price} SAR</p>
-                                        <p className="text-sm text-slate-500">{t('currentStock')}: {scannedProduct.stockLevel} {scannedProduct.unit}</p>
+                                        <p className="text-sm text-slate-500">{t('currentStock')}: {scannedProduct.stockLevel} {useUnitName(scannedProduct.unit)}</p>
                                     </div>
                                 </div>
 

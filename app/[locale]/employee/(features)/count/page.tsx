@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowLeft, Save, CheckCircle2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useProductName, useUnitName } from '@/hooks/use-localization';
 
 interface Product {
     id: string;
     name: string;
+    arabicName?: string | null;
     sku: string;
     stockLevel: number;
     unit: string;
@@ -201,14 +203,14 @@ export default function StockCountPage() {
                                                 )}
                                             </button>
                                             <div>
-                                                <h3 className="text-lg font-bold text-slate-900">{product.name}</h3>
+                                                <h3 className="text-lg font-bold text-slate-900">{useProductName(product)}</h3>
                                                 <p className="text-slate-500 text-sm font-mono">{product.sku}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
                                             <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-0.5">{t('Employee.count.current')}</div>
                                             <div className="text-2xl font-bold font-mono text-slate-900">
-                                                {change.newStock} <span className="text-sm font-bold text-slate-400">{product.unit}</span>
+                                                {change.newStock} <span className="text-sm font-bold text-slate-400">{useUnitName(product.unit)}</span>
                                             </div>
                                             {hasChanged && (
                                                 <div className="text-xs font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded inline-block mt-0.5">

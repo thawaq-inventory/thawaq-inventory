@@ -102,6 +102,7 @@ model User {
 model Product {
   id          String   @id @default(uuid())
   name        String
+  arabicName  String?  // Arabic display name for localization
   sku         String?  @unique
   description String?
   

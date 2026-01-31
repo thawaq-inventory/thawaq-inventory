@@ -59,7 +59,7 @@ export default async function RootLayout({
                         forcedTheme="light"
                         disableTransitionOnChange
                     >
-                        <div className="flex min-h-screen bg-[#F5F5F7] dark:bg-[#0B0F19]">
+                        <div className="flex min-h-screen bg-[#F5F5F7]">
                             {/* Sidebar / Navigation for larger screens could go here */}
                             <main className="flex-1">
                                 {children}
