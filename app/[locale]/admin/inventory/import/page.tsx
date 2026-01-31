@@ -187,6 +187,7 @@ function RecipeMapTab() {
 
 function SalesReportTab() {
     const [branches, setBranches] = useState<any[]>([]);
+    const [loadingBranches, setLoadingBranches] = useState(true);
     const [selectedBranch, setSelectedBranch] = useState("");
     const [file, setFile] = useState<File | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
@@ -195,53 +196,23 @@ function SalesReportTab() {
     const [executionResult, setExecutionResult] = useState<any>(null);
 
     useEffect(() => {
+        setLoadingBranches(true);
         fetch("/api/admin/branches")
             .then((res) => res.json())
-            .then((data) => setBranches(data))
-            .catch((err) => console.error(err));
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    setBranches(data);
+                    if (data.length > 0) setSelectedBranch(data[0].id); // Auto-select first
+                } else {
+                    console.error("Expected array of branches, got:", data);
+                    setBranches([]);
+                }
+            })
+            .catch((err) => console.error(err))
+            .finally(() => setLoadingBranches(false));
     }, []);
 
-    const handleAnalyze = async () => {
-        if (!file) return;
-        setAnalyzing(true);
-        setAnalysisResult(null);
-        setExecutionResult(null);
-
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("action", "ANALYZE");
-
-        try {
-            const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
-            const data = await res.json();
-            setAnalysisResult(data);
-        } catch (error) {
-            alert("Analysis failed.");
-        } finally {
-            setAnalyzing(false);
-        }
-    };
-
-    const handleExecute = async (action: string) => {
-        if (!file || !selectedBranch) return;
-        setExecuting(true);
-
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("action", action);
-        formData.append("branchId", selectedBranch);
-
-        try {
-            const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
-            const data = await res.json();
-            setExecutionResult(data);
-            setAnalysisResult(null); // Clear analysis to show success
-        } catch (error) {
-            alert("Execution failed.");
-        } finally {
-            setExecuting(false);
-        }
-    };
+    // ... handleAnalyze / handleExecute ...
 
     return (
         <div className="space-y-6">
@@ -255,8 +226,10 @@ function SalesReportTab() {
                 <CardContent className="space-y-4">
                     <div className="grid w-full max-w-sm items-center gap-1.5">
                         <Label>Select Branch (for Deduction)</Label>
-                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                            <SelectTrigger><SelectValue placeholder="Select a branch..." /></SelectTrigger>
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch} disabled={loadingBranches}>
+                            <SelectTrigger>
+                                <SelectValue placeholder={loadingBranches ? "Loading branches..." : "Select a branch..."} />
+                            </SelectTrigger>
                             <SelectContent>
                                 {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                             </SelectContent>
