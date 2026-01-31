@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { Logo } from "@/components/ui/logo";
 import BranchSwitcher from "@/components/BranchSwitcher";
 import { Button } from "@/components/ui/button";
-import { ModeToggle } from "@/components/mode-toggle";
 import {
     LayoutDashboard,
     Package,
@@ -107,7 +106,7 @@ export function AdminLayoutClient({
                 href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-200 ${active
                     ? 'nav-link-active'
-                    : 'text-slate-600 hover:text-white dark:text-slate-400 dark:hover:text-white hover:bg-gradient-to-r hover:from-sky-500 hover:to-sky-600'
+                    : 'text-slate-600 hover:text-white hover:bg-gradient-to-r hover:from-sky-500 hover:to-sky-600'
                     } ${className}`}
             >
                 <Icon className="w-5 h-5" />
@@ -122,7 +121,7 @@ export function AdminLayoutClient({
     };
 
     return (
-        <div className="flex min-h-screen bg-[#F5F5F7] dark:bg-[#0B0F19]">
+        <div className="flex min-h-screen bg-[#F5F5F7]">
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
                 <div
@@ -133,12 +132,12 @@ export function AdminLayoutClient({
 
             {/* Sidebar */}
             <aside className={`
-                w-64 bg-white dark:bg-[#0B0F19] border-r border-slate-200 dark:border-white/5 flex flex-col fixed inset-y-0 z-50
+                w-64 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 z-50
                 transition-transform duration-300 ease-in-out
                 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
                 md:translate-x-0
             `}>
-                <div className="h-20 flex items-center justify-between px-4 border-b border-slate-100 dark:border-white/5">
+                <div className="h-20 flex items-center justify-between px-4 border-b border-slate-100">
                     <Link href="/admin">
                         <Logo size="md" />
                     </Link>
@@ -204,7 +203,7 @@ export function AdminLayoutClient({
                         </button>
 
                         {inventoryOpen && (
-                            <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-200 dark:border-white/10 pl-2">
+                            <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-200 pl-2">
                                 <NavLink href="/admin/inventory/dashboard" icon={BarChart3}>
                                     {t('analytics')}
                                 </NavLink>
@@ -307,20 +306,20 @@ export function AdminLayoutClient({
                     </div>
                 </nav>
 
-                <div className="p-4 border-t border-slate-100 dark:border-white/5">
+                <div className="p-4 border-t border-slate-100">
                     <div className="flex items-center gap-3 px-3 py-3 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-200">
+                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                             {userInitials}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">{userName || t('adminUser')}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{t('adminEmail')}</p>
+                            <p className="text-sm font-medium text-slate-900 truncate">{userName || t('adminUser')}</p>
+                            <p className="text-xs text-slate-500 truncate">{t('adminEmail')}</p>
                         </div>
                         <LanguageSwitcher />
                     </div>
                     <Button
                         variant="ghost"
-                        className="w-full justify-start text-slate-500 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        className="w-full justify-start text-slate-500 hover:text-red-600 hover:bg-red-50"
                         onClick={handleLogout}
                     >
                         <LogOut className="w-4 h-4 mr-2" />
@@ -333,14 +332,14 @@ export function AdminLayoutClient({
             {/* Main Content */}
             <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
                 {/* Header Bar */}
-                <header className="h-16 bg-white dark:bg-[#0B0F19] border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
                     <div className="flex items-center gap-4">
                         {/* Hamburger Menu - Mobile only */}
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setMobileMenuOpen(true)}
-                            className="md:hidden h-10 w-10 text-slate-600 dark:text-slate-400"
+                            className="md:hidden h-10 w-10 text-slate-600"
                         >
                             <Menu className="w-6 h-6" />
                         </Button>
@@ -350,8 +349,7 @@ export function AdminLayoutClient({
                         />
                     </div>
                     <div className="flex items-center gap-4">
-                        <ModeToggle />
-                        <p className="text-sm text-slate-600 dark:text-slate-400 hidden sm:block">Welcome back, {userName || 'Admin'}</p>
+                        <p className="text-sm text-slate-600 hidden sm:block">Welcome back, {userName || 'Admin'}</p>
                     </div>
                 </header>
 
