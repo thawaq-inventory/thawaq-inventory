@@ -28,7 +28,7 @@ export default function ImportPage() {
                     <TabsTrigger value="products">Import Products</TabsTrigger>
                     <TabsTrigger value="prices">Price List (POS)</TabsTrigger>
                     <TabsTrigger value="channel-prices">Channel Pricing</TabsTrigger>
-                    <TabsTrigger value="arabic-names">Arabic Names</TabsTrigger>
+
                     <TabsTrigger value="recipe-map">Recipe Map</TabsTrigger>
                 </TabsList>
 
@@ -48,9 +48,7 @@ export default function ImportPage() {
                     <ChannelPricingTab />
                 </TabsContent>
 
-                <TabsContent value="arabic-names" className="space-y-4 mt-4">
-                    <ArabicNamesTab />
-                </TabsContent>
+
 
                 <TabsContent value="recipe-map" className="space-y-4 mt-4">
                     <RecipeMapTab />
@@ -559,79 +557,5 @@ function ChannelPricingTab() {
     );
 }
 
-// ===== ARABIC NAMES TAB =====
-function ArabicNamesTab() {
-    const [file, setFile] = useState<File | null>(null);
-    const [uploading, setUploading] = useState(false);
-    const [result, setResult] = useState<any>(null);
 
-    const handleUpload = async () => {
-        if (!file) return;
-
-        setUploading(true);
-        setResult(null);
-
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch('/api/inventory/arabic-names', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setResult({
-                    success: true,
-                    message: data.message,
-                    stats: data.stats,
-                    errors: data.errorDetails
-                });
-                setFile(null);
-            } else {
-                setResult({
-                    success: false,
-                    message: data.error || 'Import failed'
-                });
-            }
-        } catch (error: any) {
-            setResult({
-                success: false,
-                message: error.message || 'Upload failed'
-            });
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Import Arabic Product Names</CardTitle>
-                <CardDescription>
-                    Upload a CSV file with SKU and Arabic names to update product display names for the employee app
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid w-full max-w-sm items-center gap-1.5">
-                    <Label>CSV File</Label>
-                    <Input type="file" accept=".csv, .xlsx, .xls, .xlsm" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                    <p className="text-xs text-muted-foreground">
-                        Format: <code>SKU, Arabic_Name</code> (e.g., "BRD-SHRAK, خبز شراك")
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        💡 <strong>Tip:</strong> Export your current products, add an "Arabic_Name" column, and re-import
-                    </p>
-                </div>
-
-                <Button onClick={handleUpload} disabled={!file || uploading}>
-                    {uploading ? "Importing..." : "Import Arabic Names"}
-                </Button>
-                {result && <ResultCard result={result} />}
-            </CardContent>
-        </Card>
-    );
-}
 
