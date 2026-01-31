@@ -5,9 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, ArrowUpDown } from "lucide-react";
+import { Plus, Search, ArrowUpDown, Trash2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+
+import { SalesTransactionModal } from '@/components/accounting/SalesTransactionModal';
+import { DeleteConfirmationModal } from '@/components/accounting/DeleteConfirmationModal';
 
 interface JournalEntry {
     id: string;
@@ -20,8 +23,11 @@ interface JournalEntry {
         account: {
             code: string;
             name: string;
+            type: string;
         };
     }[];
+    expense?: { id: string };
+    payrollTransaction?: { id: string };
 }
 
 export default function JournalEntriesPage() {
@@ -32,6 +38,16 @@ export default function JournalEntriesPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [showAll, setShowAll] = useState(false);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+    // Modal State
+    const [selectedSalesEntry, setSelectedSalesEntry] = useState<JournalEntry | null>(null);
+    const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+
+    // Delete Modal State
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [deleteEntry, setDeleteEntry] = useState<JournalEntry | null>(null); // Store full entry for logic
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         fetchEntries();
@@ -50,6 +66,56 @@ export default function JournalEntriesPage() {
             console.error('Failed to fetch journal entries:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteClick = (entry: JournalEntry) => {
+        setDeleteId(entry.id);
+        setDeleteEntry(entry);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId || !deleteEntry) return;
+
+        setIsDeleting(true);
+
+        try {
+            let res;
+
+            // SMART DELETE LOGIC
+            // 1. Expense Claim
+            if (deleteEntry.expense?.id) {
+                // TODO: Ensure DELETE /api/expenses logic exists or handle here. 
+                // For now, let's assume we delete the journal entry directly if no specific endpoint.
+                // Or better, let's assume the user wants to delete the transaction.
+                res = await fetch(`/api/accounting/journal/${deleteId}`, { method: 'DELETE' });
+            }
+            // 2. Sales Import
+            else if (deleteEntry.description.includes('Sales Import') && deleteEntry.reference) {
+                res = await fetch(`/api/inventory/sales-import/${deleteEntry.reference}`, { method: 'DELETE' });
+            }
+            // 3. Standard Manual Entry
+            else {
+                res = await fetch(`/api/accounting/journal/${deleteId}`, { method: 'DELETE' });
+            }
+
+            if (res.ok) {
+                // Remove locally
+                setEntries(prev => prev.filter(e => e.id !== deleteId));
+                setIsDeleteModalOpen(false);
+                setDeleteId(null);
+                setDeleteEntry(null);
+            } else {
+                const data = await res.json();
+                alert('Failed to delete: ' + (data.error || 'Unknown error'));
+                // Keep modal open
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Failed to delete entry');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -85,6 +151,27 @@ export default function JournalEntriesPage() {
 
     const toggleSort = () => {
         setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    };
+
+    const handleRowClick = (entry: JournalEntry) => {
+        // Rule 1: Expense Claim
+        if (entry.expense?.id) {
+            router.push(`/admin/expenses/${entry.expense.id}`);
+            return;
+        }
+
+        // Rule 2: Sales Import (Pop-up)
+        if (entry.description.includes('Sales Import')) {
+            setSelectedSalesEntry(entry);
+            setIsSalesModalOpen(true);
+            return;
+        }
+
+        // Rule 3: Payroll (Optional Future Expansion)
+        // if (entry.payrollTransaction?.id) ...
+
+        // Rule 4: Manual / Default
+        router.push(`/admin/accounting/journal/${entry.id}`);
     };
 
     return (
@@ -162,6 +249,7 @@ export default function JournalEntriesPage() {
                                     <TableHead>Description</TableHead>
                                     <TableHead>Accounts</TableHead>
                                     <TableHead className="text-right w-32">Amount</TableHead>
+                                    <TableHead className="w-10"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -169,7 +257,7 @@ export default function JournalEntriesPage() {
                                     <TableRow
                                         key={entry.id}
                                         className="cursor-pointer hover:bg-slate-50"
-                                        onClick={() => router.push(`/admin/accounting/journal/${entry.id}`)}
+                                        onClick={() => handleRowClick(entry)}
                                     >
                                         <TableCell className="font-medium">
                                             {format(new Date(entry.date), 'MMM dd, yyyy')}
@@ -195,6 +283,21 @@ export default function JournalEntriesPage() {
                                         <TableCell className="text-right font-mono font-medium text-sky-600">
                                             {calculateTotal(entry).toFixed(2)} JOD
                                         </TableCell>
+                                        <TableCell>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-slate-400 hover:text-red-600 hover:bg-red-50 z-10 relative"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    handleDeleteClick(entry);
+                                                }}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -202,6 +305,23 @@ export default function JournalEntriesPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <SalesTransactionModal
+                isOpen={isSalesModalOpen}
+                onClose={() => setIsSalesModalOpen(false)}
+                entry={selectedSalesEntry}
+            />
+
+            <DeleteConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={confirmDelete}
+                title="Delete Journal Entry?"
+                description={deleteEntry?.description.includes('Sales')
+                    ? "REVERSAL WARNING: This will reverse the entire Sales Upload (Revenue, Tax, Fees, Inventory). This cannot be undone."
+                    : "This will permanently delete the transaction and reverse all GL impacts. This cannot be undone."}
+                isLoading={isDeleting}
+            />
         </div>
     );
 }

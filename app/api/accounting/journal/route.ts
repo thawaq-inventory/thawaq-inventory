@@ -11,7 +11,9 @@ export async function GET() {
                     include: {
                         account: true
                     }
-                }
+                },
+                expense: true,
+                payrollTransaction: true
             }
         });
         return NextResponse.json(entries);

@@ -33,6 +33,7 @@ interface PayrollTransaction {
     errorMessage: string | null;
     createdAt: string;
     accountNumber: string | null;
+    glStatus: string;
 }
 
 export default function PayrollApprovalsPage() {
@@ -135,7 +136,36 @@ export default function PayrollApprovalsPage() {
         }
     }
 
+    async function handlePostToGL() {
+        const approvedIds = transactions
+            .filter(t => t.status === 'approved' && t.glStatus === 'PENDING')
+            .map(t => t.id);
+
+        if (approvedIds.length === 0) return;
+
+        if (!confirm(`Post ${approvedIds.length} approved payroll transactions to General Ledger?`)) return;
+
+        try {
+            const res = await fetch('/api/payroll/post-gl', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payrollIds: approvedIds })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Successfully posted to GL! Journal Entry ID: ${data.journalEntryId}`);
+                fetchTransactions();
+            } else {
+                alert('Failed: ' + data.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to post to GL');
+        }
+    }
+
     const pendingCount = transactions.filter(t => t.status === 'waiting_bank_approval').length;
+    const pendingGLCount = transactions.filter(t => t.status === 'approved' && t.glStatus === 'PENDING').length;
 
     return (
         <div className="p-6 max-w-7xl mx-auto bg-gray-50 min-h-screen">
@@ -151,11 +181,19 @@ export default function PayrollApprovalsPage() {
                             Review and approve CliQ instant transfer requests
                         </p>
                     </div>
-                    {pendingCount > 0 && (
-                        <Badge className="bg-yellow-500 text-lg px-4 py-2">
-                            {pendingCount} Pending
-                        </Badge>
-                    )}
+                    <div className="flex gap-3">
+                        {pendingGLCount > 0 && (
+                            <Button onClick={handlePostToGL} className="bg-purple-600 hover:bg-purple-700">
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                Post {pendingGLCount} to GL
+                            </Button>
+                        )}
+                        {pendingCount > 0 && (
+                            <Badge className="bg-yellow-500 text-lg px-4 py-2">
+                                {pendingCount} Pending
+                            </Badge>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -217,6 +255,11 @@ export default function PayrollApprovalsPage() {
                                         <div className="flex items-center gap-3 mb-3">
                                             <h3 className="text-xl font-bold">{transaction.employee.name}</h3>
                                             {getStatusBadge(transaction.status)}
+                                            {transaction.glStatus === 'POSTED' && (
+                                                <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">
+                                                    GL Posted
+                                                </Badge>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4 text-sm">

@@ -3,18 +3,38 @@ import { getMessages } from 'next-intl/server';
 import "../globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import type { Metadata, Viewport } from "next";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-    title: "Thawaq Inventory",
-    description: "Restaurant Inventory Management",
+export const metadata: Metadata = {
+    title: "Al Thawaq Inventory",
+    description: "Modern inventory management system for Al Thawaq restaurant",
+    manifest: "/manifest.json",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "default",
+        title: "Al Thawaq",
+    },
+    formatDetection: {
+        telephone: false,
+    },
+    icons: {
+        icon: [
+            { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+            { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+        ],
+        apple: [
+            { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+        ],
+    },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
+    themeColor: "#0ea5e9",
     userScalable: false,
 };
 
@@ -29,13 +49,14 @@ export default async function RootLayout({
     const messages = await getMessages();
 
     return (
-        <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-            <body className={inter.className}>
+        <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'} suppressHydrationWarning>
+            <body className={inter.className} suppressHydrationWarning>
                 <NextIntlClientProvider messages={messages}>
                     <ThemeProvider
                         attribute="class"
-                        defaultTheme="system"
-                        enableSystem
+                        defaultTheme="light"
+                        enableSystem={false}
+                        forcedTheme="light"
                         disableTransitionOnChange
                     >
                         <div className="flex min-h-screen bg-[#F5F5F7] dark:bg-[#0B0F19]">

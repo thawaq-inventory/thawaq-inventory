@@ -4,15 +4,30 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { branchId, vendorId, invoiceNumber, items, notes, userId } = body;
+        const { vendorId, invoiceNumber, items, notes, userId } = body; // REMOVED branchId input trust
+
+        // ZERO TRUST: Derive Branch from Session
+        const { cookies } = await import('next/headers');
+        const cookieStore = await cookies();
+        const sessionBranchId = cookieStore.get('branchId')?.value; // Primary
+
+        // If no session branch, fail. We can't trust the client.
+        if (!sessionBranchId) {
+            return NextResponse.json(
+                { error: 'Forbidden: No Active Branch Session' },
+                { status: 403 }
+            );
+        }
+
+        const validBranchId = sessionBranchId;
 
         // items: [{ productId, quantity, unitCost }] 
         // quantity is in Purchase Units (e.g. Cases)
         // unitCost is Cost Per Purchase Unit (e.g. Cost Per Case)
 
-        if (!branchId || !items || !Array.isArray(items)) {
+        if (!items || !Array.isArray(items)) {
             return NextResponse.json(
-                { error: 'Missing required fields' },
+                { error: 'Missing required items' },
                 { status: 400 }
             );
         }
@@ -84,12 +99,12 @@ export async function POST(request: NextRequest) {
                     data: { cost: newWac }
                 });
 
-                // 4. Update Inventory Level
+                // 4. Update Inventory Level (Use Validated ID)
                 await tx.inventoryLevel.upsert({
                     where: {
                         productId_branchId: {
                             productId,
-                            branchId
+                            branchId: validBranchId
                         }
                     },
                     update: {
@@ -97,7 +112,7 @@ export async function POST(request: NextRequest) {
                     },
                     create: {
                         productId,
-                        branchId,
+                        branchId: validBranchId,
                         quantityOnHand: baseQuantityToAdd
                     }
                 });
@@ -107,8 +122,8 @@ export async function POST(request: NextRequest) {
                     data: {
                         type: 'PURCHASE_IN',
                         productId,
-                        destBranchId: branchId, // Incoming
-                        quantity: baseQuantityToAdd, // Always Base Units in Internal System
+                        destBranchId: validBranchId, // INJECTION SHIELD: Use Validated ID
+                        quantity: baseQuantityToAdd,
                         userId: userId || 'system',
                         notes: `Purchased ${qty} ${product.purchaseUnit || 'Units'}. WAC updated to ${newWac.toFixed(3)}. Invoice: ${invoiceNumber || 'N/A'}`
                     }
@@ -118,7 +133,7 @@ export async function POST(request: NextRequest) {
                 await tx.inventoryLog.create({
                     data: {
                         productId,
-                        branchId,
+                        branchId: validBranchId,
                         changeAmount: baseQuantityToAdd,
                         reason: 'RESTOCK',
                         userId: userId || null
@@ -135,6 +150,7 @@ export async function POST(request: NextRequest) {
                         description: `Purchase Invoice: ${invoiceNumber || 'Direct Purchase'}`,
                         reference: invoiceNumber || `PUR-${Date.now()}`,
                         date: new Date(),
+                        branchId: validBranchId, // GHOST DATA FIX: Linked to Branch
                         lines: {
                             create: [
                                 {

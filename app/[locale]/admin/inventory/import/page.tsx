@@ -80,8 +80,8 @@ function ImportProductsTab() {
             <CardHeader>
                 <CardTitle>Bulk Product Import</CardTitle>
                 <CardDescription>
-                    Upload CSV: <b>Name, SKU, Category, Base_Unit, Purchase_Unit, Conversion_Factor, Initial_Cost</b>
-                    <br />Creates products and seeds inventory levels for all active branches.
+                    Upload CSV: <b>Name, SKU, Category, Base_Unit, Purchase_Unit, Conversion_Factor, Purchase_Price</b>
+                    <br />System uses <b>SKU</b> to match. Re-uploading updates existing products (no duplicates).
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -171,7 +171,7 @@ function RecipeMapTab() {
                 <CardTitle>Upload Recipe Map (Ingredients)</CardTitle>
                 <CardDescription>
                     Upload CSV: <b>POS_String, Inventory_SKU, Quantity</b>.
-                    <br />Definitions for inventory deduction.
+                    <br />Matches on <b>POS String</b>. Re-uploading updates the mapping quantity/SKU.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -209,7 +209,7 @@ function SalesReportTab() {
 
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("execute", "false");
+        formData.append("action", "ANALYZE");
 
         try {
             const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
@@ -222,20 +222,20 @@ function SalesReportTab() {
         }
     };
 
-    const handleExecute = async () => {
+    const handleExecute = async (action: string) => {
         if (!file || !selectedBranch) return;
         setExecuting(true);
 
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("execute", "true");
+        formData.append("action", action);
         formData.append("branchId", selectedBranch);
 
         try {
             const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
             const data = await res.json();
             setExecutionResult(data);
-            setAnalysisResult(null);
+            setAnalysisResult(null); // Clear analysis to show success
         } catch (error) {
             alert("Execution failed.");
         } finally {
@@ -265,176 +265,137 @@ function SalesReportTab() {
 
                     <div className="grid w-full max-w-sm items-center gap-1.5">
                         <Label>Sales Report CSV</Label>
-                        <Input type="file" accept=".csv, .xlsx, .xls, .xlsm, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, application/vnd.ms-excel.sheet.macroEnabled.12" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                        <Input type="file" accept=".csv, .xlsx, .xls, .xlsm" onChange={(e) => setFile(e.target.files?.[0] || null)} />
                     </div>
 
-                    <div className="flex gap-4">
-                        <Button onClick={handleAnalyze} disabled={!file || analyzing || executing} variant="secondary">
-                            {analyzing ? "Analyzing..." : "Analyze Report"}
-                        </Button>
-
-                        {analysisResult &&
-                            (!analysisResult.missingMappings || analysisResult.missingMappings.length === 0) && (
-                                <Button onClick={handleExecute} disabled={!selectedBranch || executing}>
-                                    {executing ? "Processing..." : "Confirm & Deduct Inventory"}
-                                </Button>
-                            )}
-                    </div>
+                    <Button onClick={handleAnalyze} disabled={!file || analyzing || executing} className="btn-primary-blue">
+                        {analyzing ? "Analyzing..." : "Step 1: Analyze Report"}
+                    </Button>
                 </CardContent>
             </Card>
 
-            {/* Analysis Results */}
-            {analysisResult && (
-                <div className="space-y-4">
-                    {/* Financials */}
-                    {analysisResult.financials && (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Declared Revenue</CardTitle>
-                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">{analysisResult.financials.totalDeclaredRevenue?.toFixed(2)}</div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Calculated Revenue</CardTitle>
-                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">{analysisResult.financials.totalExpectedRevenue?.toFixed(2)}</div>
-                                </CardContent>
-                            </Card>
-                            <Card className={Math.abs(analysisResult.financials.revenueVariance?.toFixed(2)) > 5 ? "border-red-500" : ""}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Variance</CardTitle>
-                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className={`text-2xl font-bold ${analysisResult.financials.revenueVariance < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                        {analysisResult.financials.revenueVariance?.toFixed(2)}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Est. COGS</CardTitle>
-                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">{analysisResult.financials.totalCOGS?.toFixed(2)}</div>
-                                </CardContent>
-                            </Card>
+            {analysisResult?.error && (
+                <div className="mt-4">
+                    <ResultCard result={{ success: false, data: analysisResult }} />
+                </div>
+            )}
+
+            {/* SEQUENCE 1: FLASH P&L REPORT */}
+            {analysisResult && analysisResult.flashReport && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <Card className="border-l-4 border-l-blue-600 shadow-md">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-blue-600" />
+                                Flash P&L Report
+                            </CardTitle>
+                            <CardDescription>Review financial impact before posting.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-slate-50">
+                                        <TableHead>Metric</TableHead>
+                                        <TableHead>Logic</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {analysisResult.flashReport.map((row: any, idx: number) => (
+                                        <TableRow key={idx} className={row.isTotal ? "font-bold bg-slate-100" : ""}>
+                                            <TableCell className="font-medium">{row.metric}</TableCell>
+                                            <TableCell className="text-xs text-slate-500">{row.logic}</TableCell>
+                                            <TableCell className={`text-right font-mono ${row.isNegative ? "text-red-600" : "text-green-700"}`}>
+                                                {row.amount.toFixed(2)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+
+                    {/* SEQUENCE 2: GAP REPORT */}
+                    {analysisResult.zeroCostCount > 0 && (
+                        <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-md flex items-start gap-4">
+                            <AlertTriangle className="w-6 h-6 text-orange-600 mt-1" />
+                            <div>
+                                <h4 className="font-bold text-orange-800">Gap Detected: Zero Cost Items</h4>
+                                <p className="text-orange-700 text-sm mt-1">
+                                    ⚠️ <b>{analysisResult.zeroCostCount} Items</b> have $0.00 cost mapped.
+                                    This will skew your COGS lower than actual.
+                                </p>
+                            </div>
                         </div>
                     )}
 
-                    {/* Warnings */}
-                    {analysisResult.missingMappings?.length > 0 && (
-                        <Card className="border-red-200">
-                            <CardHeader className="bg-red-50">
-                                <CardTitle className="text-red-700 flex items-center gap-2">
-                                    <AlertCircle className="h-5 w-5" />
-                                    Missing Recipes ({analysisResult.missingMappings.length})
-                                </CardTitle>
-                                <CardDescription>These items cannot be deducted. Update Recipe Map.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="pt-4">
-                                <div className="max-h-[200px] overflow-y-auto">
-                                    <ul className="list-disc pl-5">
-                                        {analysisResult.missingMappings.map((m: string, i: number) => <li key={i} className="text-sm">{m}</li>)}
-                                    </ul>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {analysisResult.missingPrices?.length > 0 && (
-                        <Card className="border-yellow-200">
-                            <CardHeader className="bg-yellow-50">
-                                <CardTitle className="text-yellow-700 flex items-center gap-2">
-                                    <AlertTriangle className="h-5 w-5" />
-                                    Missing Prices ({analysisResult.missingPrices.length})
-                                </CardTitle>
-                                <CardDescription>Revenue calculation may be inaccurate. Update Price List.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="pt-4">
-                                <div className="max-h-[200px] overflow-y-auto">
-                                    <ul className="list-disc pl-5">
-                                        {analysisResult.missingPrices.map((m: string, i: number) => <li key={i} className="text-sm">{m}</li>)}
-                                    </ul>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Audit Report Table */}
-                    {analysisResult.auditReport && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium">Data Validation Audit</CardTitle>
-                                <CardDescription>Detailed check for Recipe existence, SKU validity, and Costing.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="max-h-[300px] overflow-y-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>POS Item</TableHead>
-                                                <TableHead>Status</TableHead>
-                                                <TableHead>SKU</TableHead>
-                                                <TableHead>Cost</TableHead>
-                                                <TableHead>Details</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {analysisResult.auditReport.map((item: any, i: number) => (
-                                                <TableRow key={i}>
-                                                    <TableCell className="font-medium">{item.posName}</TableCell>
-                                                    <TableCell>
-                                                        {item.status === 'OK' && <span className="text-green-600 font-bold">OK</span>}
-                                                        {item.status === 'MISSING_RECIPE' && <span className="text-red-600 font-bold">Missing Recipe</span>}
-                                                        {item.status === 'SKU_NOT_FOUND' && <span className="text-red-600 font-bold">SKU Not Found</span>}
-                                                        {item.status === 'ZERO_COST' && <span className="text-orange-600 font-bold">Zero Cost</span>}
-                                                    </TableCell>
-                                                    <TableCell>{item.sku || '-'}</TableCell>
-                                                    <TableCell>{item.cost !== undefined ? item.cost.toFixed(3) : '-'}</TableCell>
-                                                    <TableCell className="text-xs text-muted-foreground">{item.details}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Success State */}
-                    {(!analysisResult.missingMappings || analysisResult.missingMappings.length === 0) && (
-                        <div className="flex items-center gap-2 text-green-600 bg-green-50 p-4 rounded-md">
-                            <CheckCircle className="h-5 w-5" />
-                            <p className="font-semibold">All Recipes Mapped. Ready to Deduct.</p>
+                    {analysisResult.status === 'DUPLICATE' && (
+                        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md flex items-start gap-4">
+                            <AlertCircle className="w-6 h-6 text-red-600 mt-1" />
+                            <div>
+                                <h4 className="font-bold text-red-800">Duplicate Sales Upload</h4>
+                                <p className="text-red-700 text-sm mt-1">
+                                    These receipts have already been posted to the General Ledger.
+                                </p>
+                            </div>
                         </div>
                     )}
+
+                    {/* SEQUENCE 3: ACTION MENU */}
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t">
+                        <Button
+                            onClick={() => handleExecute('POST_ALL')}
+                            disabled={!selectedBranch || executing || analysisResult.status === 'DUPLICATE'}
+                            className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                        >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            [Post Everything]
+                        </Button>
+
+                        <Button
+                            onClick={() => handleExecute('POST_REVENUE_ONLY')}
+                            disabled={!selectedBranch || executing || analysisResult.status === 'DUPLICATE'}
+                            variant="outline"
+                            className="flex-1 border-blue-200 hover:bg-blue-50 text-blue-800"
+                        >
+                            <DollarSign className="w-4 h-4 mr-2" />
+                            [Post Revenue Only]
+                        </Button>
+
+                        <Button
+                            onClick={() => handleExecute('POST_MISSING_COGS')}
+                            disabled={!selectedBranch || executing}
+                            variant="outline"
+                            className="flex-1 border-orange-200 hover:bg-orange-50 text-orange-800"
+                        >
+                            <Upload className="w-4 h-4 mr-2" />
+                            [Post Missing COGS]
+                        </Button>
+                    </div>
+                    <p className="text-xs text-center text-slate-400">
+                        * Actions will create locked Journal Entries.
+                    </p>
                 </div>
             )}
 
             {executionResult && (
-                <Card className="border-green-200 bg-green-50">
+                <Card className="border-green-200 bg-green-50 animate-in zoom-in-95 duration-300">
                     <CardHeader>
                         <CardTitle className="text-green-800 flex items-center gap-2">
                             <CheckCircle className="h-6 w-6" />
-                            Deduction Complete
+                            Posting Complete
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-green-700">{executionResult.message}</p>
-                        {executionResult.financials && (
-                            <div className="mt-2 text-sm text-green-800">
-                                COGS Logged: {executionResult.financials.totalCOGS?.toFixed(2)} | Revenue Logged: {executionResult.financials.totalDeclaredRevenue?.toFixed(2)}
-                            </div>
-                        )}
+                        <p className="text-green-700 font-medium">{executionResult.message}</p>
+                        <p className="text-sm text-green-600 mt-2">Entries Created: <b>{executionResult.postedCount}</b></p>
+                        <Button
+                            variant="outline"
+                            className="mt-4 bg-white border-green-200 text-green-700 hover:bg-green-100"
+                            onClick={() => { setExecutionResult(null); setFile(null); }}
+                        >
+                            Process Another File
+                        </Button>
                     </CardContent>
                 </Card>
             )}

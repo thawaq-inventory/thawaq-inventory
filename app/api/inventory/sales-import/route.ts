@@ -3,308 +3,346 @@ import { prisma } from '@/lib/prisma';
 import { parseUpload } from '@/lib/parsers/file-parser';
 import { parseSalesReportLine, parseTabSenseItems, ParsedItem } from '@/lib/parsers/sales-report-parser';
 
+// --- FINANCIAL CONSTANTS (FALLBACKS) ---
+// These will be overridden by DB settings if available
+const DEFAULT_RATES: Record<string, number> = {
+    'Visa': 0.007,
+    'Talabat': 0.25,
+    'Careem': 0.25
+};
+
 // Normalized Headers expected
 interface SalesRow {
-    // Standard Format
+    // TabSense Format (Master)
+    created_at?: string;
+    receipt?: string | number; // Unique Identifier
+    items_breakdown?: string;
+    total?: string | number; // Total Collected
+    gross_sales?: string | number; // Real Revenue
+    taxes?: string | number; // Tax Liability
+
+    // Payment Methods for Fee Calc
+    cash?: string | number;
+    visa?: string | number;
+    talabat?: string | number;
+    careem?: string | number;
+    tips?: string | number;
+    tip?: string | number; // Alias
+
+    // Legacy support (optional)
     order_items?: string;
     order_value?: string | number;
 
-    // TabSense Format
-    created_at?: string;
-    items_breakdown?: string;
-    total?: string | number;
-    gross_sales?: string | number;
-    discount?: string | number;
-    tip_amount?: string | number;
-    taxes?: string | number;
-    order_charge?: string | number;
-    cash?: string | number;
-    visa?: string | number;
-
-    // Common
     [key: string]: any;
 }
 
-interface AuditItem {
-    posName: string;
-    status: 'OK' | 'MISSING_RECIPE' | 'SKU_NOT_FOUND' | 'ZERO_COST';
-    details: string;
-    sku?: string;
-    cost?: number;
+interface FlashPnL {
+    metric: string;
+    amount: number;
+    logic: string;
+    isNegative?: boolean;
+    isTotal?: boolean;
 }
 
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;
-        const execute = formData.get('execute') === 'true';
+        const action = formData.get('action') as string; // 'ANALYZE', 'POST_ALL', 'POST_REVENUE_ONLY', 'POST_MISSING_COGS'
         const branchId = formData.get('branchId') as string;
 
         if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
-        // 1. Parsing (Robust)
-        const { data: rawData, errors } = await parseUpload<SalesRow>(file);
+        // 0. Fetch Dynamic Settings
+        const [paymentMethods, systemSettings] = await Promise.all([
+            prisma.paymentMethod.findMany(),
+            prisma.systemSetting.findMany()
+        ]);
 
+        const getFeeRate = (method: string) => {
+            const setting = paymentMethods.find(p => p.name.toLowerCase() === method.toLowerCase());
+            return setting ? setting.feeRate : (DEFAULT_RATES[method] || 0);
+        };
+
+        const getSetting = (key: string, defaultVal: number) => {
+            const s = systemSettings.find(x => x.key === key);
+            return s ? parseFloat(s.value) : defaultVal;
+        };
+
+        const VAT_RATE = getSetting('VAT_RATE', 0.16); // Default 16% if missing
+        const FEE_VISA = getFeeRate('Visa');
+        const FEE_TALABAT = getFeeRate('Talabat');
+        const FEE_CAREEM = getFeeRate('Careem');
+
+        // 1. Parsing
+        const { data: rawData, errors } = await parseUpload<SalesRow>(file);
         if (errors.length > 0) {
             return NextResponse.json({ error: 'File Parse Error', details: errors }, { status: 400 });
         }
 
-        // --- DATE PARSING LOGIC ---
-        let reportDate: Date = new Date(); // Default to now
-        let dateSourceString = "System Today";
-
-        // Try to find a date in the first valid row content
-        if (rawData.length > 0) {
-            const firstRow = rawData[0];
-
-            // 1. Check Headers aliases (including TabSense 'created_at')
-            const dateVal = firstRow['Date'] || firstRow['date'] || firstRow['Business Date'] || firstRow['Time'] || firstRow['created_at'];
-
-            if (dateVal) {
-                // Try parse
-                const d = new Date(String(dateVal));
-                if (!isNaN(d.getTime())) {
-                    reportDate = d;
-                    dateSourceString = `Header (${dateVal})`;
-                }
-            } else {
-                // 2. Hard Fallback: Column Index 9 (J) 
-                // We keep this for the legacy format just in case, but TabSense overrides this via 'created_at' if found.
-                const keys = Object.keys(firstRow);
-                if (keys.length > 9) {
-                    const colJKey = keys[9];
-                    const valJ = firstRow[colJKey];
-                    const dJ = new Date(String(valJ));
-                    if (!isNaN(dJ.getTime())) {
-                        reportDate = dJ;
-                        dateSourceString = `Column J (${valJ})`;
-                    }
-                }
-            }
-        }
-
-        // Safety Check 1: Filter Empty Rows
-        // Must contain EITHER 'order_items' (Legacy) OR 'items_breakdown' (TabSense)
+        // Filter valid data
         const data = rawData.filter(row => {
-            const legacy = row.order_items && String(row.order_items).trim() !== '';
-            const tabsense = row.items_breakdown && String(row.items_breakdown).trim() !== '';
-            return legacy || tabsense;
+            const hasItems = (row.items_breakdown && String(row.items_breakdown).trim() !== '') || row.order_items;
+            const hasTotal = row.total || row.order_value;
+            return hasItems && hasTotal;
         });
 
         if (data.length === 0) {
-            return NextResponse.json({ error: 'No valid sales data found in file.' }, { status: 400 });
+            const foundHeaders = rawData.length > 0 ? Object.keys(rawData[0]).join(', ') : 'None';
+            return NextResponse.json({
+                error: 'No valid sales data found. Check your CSV headers.',
+                details: [
+                    `Found Headers: ${foundHeaders}`,
+                    `Expected: items_breakdown (or order_items) AND total (or order_value)`
+                ]
+            }, { status: 400 });
         }
 
-        // 2. Data Gathering
-        const uniquePosStrings = new Set<string>();
-        const parsedRows: { items: ParsedItem[], declaredRevenue: number, rowIndex: number }[] = [];
-        const failedRows: { row: number, error: string }[] = [];
+        // 2. Data Gathering & Flash P&L Calculation
+        let totalCollected = 0;
+        let totalNetRevenue = 0;
+        let totalTaxLiability = 0;
+        let totalTips = 0;
+        let totalTransactionFees = 0;
+        let totalCOGS = 0;
+        let zeroCostCount = 0;
 
-        let rowIndex = 0;
+        const receiptsToProcess: any[] = [];
+        const receiptIds = new Set<string>();
+
+        // Pre-fetch Mappings for Speed
+        const allPosStrings = new Set<string>();
+        // First pass to collect names
         for (const row of data) {
-            rowIndex++;
-            try {
-                let items: ParsedItem[] = [];
-                let declaredRevenue = 0;
-
-                // A. DETECT AND PARSE TABSENSE
-                if (row.items_breakdown) {
-                    items = parseTabSenseItems(String(row.items_breakdown));
-
-                    // Parse Revenue
-                    // Use Total or Gross Sales? User specified "Total".
-                    const val = row.total || row.gross_sales || '0';
-                    declaredRevenue = parseFloat(String(val).replace(/[^0-9.-]+/g, '')) || 0;
-                }
-                // B. LEGACY FORMAT
-                else if (row.order_items) {
-                    items = parseSalesReportLine(String(row.order_items));
-
-                    if (row.order_value) {
-                        const cleanVal = String(row.order_value).replace(/[^0-9.-]+/g, '');
-                        declaredRevenue = parseFloat(cleanVal) || 0;
-                    }
-                } else {
-                    continue; // Should be filtered out already but extra safety
-                }
-
-                parsedRows.push({ items, declaredRevenue, rowIndex });
-
-                items.forEach(item => {
-                    uniquePosStrings.add(item.name);
-                    item.modifiers.forEach(mod => {
-                        uniquePosStrings.add(mod.name);
-                    });
-                });
-            } catch (err: any) {
-                console.warn(`Failed to process row ${rowIndex}:`, err.message);
-                failedRows.push({ row: rowIndex, error: err.message });
+            if (row.items_breakdown) {
+                const items = parseTabSenseItems(String(row.items_breakdown));
+                items.forEach(i => { allPosStrings.add(i.name); i.modifiers.forEach(m => allPosStrings.add(m.name)); });
+            } else if (row.order_items) {
+                const items = parseSalesReportLine(String(row.order_items));
+                items.forEach(i => { allPosStrings.add(i.name); i.modifiers.forEach(m => allPosStrings.add(m.name)); });
             }
         }
 
-        // 3. Database Lookups (Prices & Recipes)
-        const posStrings = Array.from(uniquePosStrings);
-
-        // Fetch Mappings
         const recipes = await prisma.productMapping.findMany({
-            where: { posString: { in: posStrings } },
+            where: { posString: { in: Array.from(allPosStrings) } },
             include: { product: true }
         });
-
-        const prices = await prisma.posMenuItem.findMany({
-            where: { posString: { in: posStrings } }
-        });
-
         const recipeMap = new Map<string, any>();
-        recipes.forEach(m => recipeMap.set(m.posString, m));
+        recipes.forEach(r => recipeMap.set(r.posString, r));
 
-        const priceMap = new Map<string, number>();
-        prices.forEach(p => priceMap.set(p.posString, p.sellingPrice));
+        // Main Loop
+        for (const row of data) {
+            const receiptId = String(row.receipt || row['Receipt'] || `LEGACY_${Math.random()}`); // Fallback for legacy
+            receiptIds.add(receiptId);
 
-        // --- STRICT AUDIT LOGIC ---
-        const auditReport: AuditItem[] = [];
+            // Helpers to parse currency safely
+            const getFloat = (val: any) => parseFloat(String(val || 0).replace(/[^0-9.-]+/g, '')) || 0;
 
-        posStrings.forEach(posName => {
-            const mapping = recipeMap.get(posName);
+            // --- WATERFALL CALCULATION ---
+            // 1. Total Collected (Cash + Tax)
+            let rowTotal = getFloat(row.total);
+            const rowTax = getFloat(row.taxes);
+            const rowGrossInput = getFloat(row.gross_sales);
 
-            // Check A: Recipe Exists
-            if (!mapping) {
-                auditReport.push({
-                    posName,
-                    status: 'MISSING_RECIPE',
-                    details: 'No recipe mapping found.'
-                });
-                return;
+            // Fallback: If total is missing, reconstruct it
+            if (rowTotal === 0 && (rowGrossInput > 0 || rowTax > 0)) {
+                rowTotal = rowGrossInput + rowTax;
             }
 
-            // Check B: SKU Exists (Product relation)
-            if (!mapping.product) {
-                // Mapping exists but valid product does not (Orphaned)
-                auditReport.push({
-                    posName,
-                    status: 'SKU_NOT_FOUND',
-                    details: `Mapped to productId ${mapping.productId} but not found in DB.`,
-                    sku: 'UNKNOWN'
-                });
-                return;
+            // 2. Net Revenue (Real Income)
+            const rowNetRevenue = rowTotal - rowTax;
+
+            // Handling Tips
+            const tips = getFloat(row.tips || row.tip);
+
+            // Fees Calculation
+            const visa = getFloat(row.visa);
+            const talabat = getFloat(row.talabat);
+            const careem = getFloat(row.careem);
+
+            const fees = (visa * FEE_VISA) + (talabat * FEE_TALABAT) + (careem * FEE_CAREEM);
+
+            // COGS Calculation
+            let rowCOGS = 0;
+            let rowItems: ParsedItem[] = [];
+
+            if (row.items_breakdown) {
+                rowItems = parseTabSenseItems(String(row.items_breakdown));
+            } else if (row.order_items) {
+                rowItems = parseSalesReportLine(String(row.order_items));
             }
 
-            // Check C: Cost > 0
-            if (mapping.product.cost <= 0) {
-                auditReport.push({
-                    posName,
-                    status: 'ZERO_COST',
-                    details: `Product Cost is 0.00.`,
-                    sku: mapping.product.sku,
-                    cost: 0
-                });
-                return;
-            }
-
-            // All OK
-            auditReport.push({
-                posName,
-                status: 'OK',
-                details: 'Detailed validated.',
-                sku: mapping.product.sku,
-                cost: mapping.product.cost
-            });
-        });
-
-        // 5. Calculations
-        let totalExpectedRevenue = 0;
-        let totalDeclaredRevenue = 0;
-        const deductionMap = new Map<string, number>();
-        const cogsMap = new Map<string, number>();
-
-        for (const row of parsedRows) {
-            totalDeclaredRevenue += row.declaredRevenue;
-            let rowRevenue = 0;
-
-            for (const item of row.items) {
-                const pPrice = priceMap.get(item.name) || 0;
-                rowRevenue += pPrice * item.qty;
-
-                for (const mod of item.modifiers) {
-                    const mPrice = priceMap.get(mod.name) || 0;
-                    rowRevenue += mPrice * item.qty * mod.qty;
-                }
-
-                // Deduction Logic
-                const processDeduction = (posName: string, multiplier: number) => {
-                    const mapping = recipeMap.get(posName);
+            for (const item of rowItems) {
+                const processItem = (name: string, qty: number) => {
+                    const mapping = recipeMap.get(name);
                     if (mapping && mapping.product) {
-                        const deductQty = multiplier * mapping.quantity;
-
-                        // Helper map for execution later
-                        const currentQty = deductionMap.get(mapping.productId) || 0;
-                        deductionMap.set(mapping.productId, currentQty + deductQty);
-
-                        // COGS (Live WAC)
-                        // If cost is 0, we still sum it but it adds 0
-                        const unitCost = mapping.product.cost || 0;
-                        const currentCogs = cogsMap.get(mapping.productId) || 0;
-                        cogsMap.set(mapping.productId, currentCogs + (deductQty * unitCost));
+                        const cost = mapping.product.cost || 0;
+                        if (cost === 0) zeroCostCount++;
+                        rowCOGS += (cost * mapping.quantity * qty);
+                    } else {
+                        // Missing recipe/product counts as zero cost for awareness
+                        zeroCostCount++;
                     }
                 };
-
-                processDeduction(item.name, item.qty);
-                item.modifiers.forEach(mod => processDeduction(mod.name, item.qty * mod.qty));
+                processItem(item.name, item.qty);
+                item.modifiers.forEach(mod => processItem(mod.name, item.qty * mod.qty));
             }
-            totalExpectedRevenue += rowRevenue;
+
+            // Aggregate
+            totalCollected += rowTotal;
+            totalNetRevenue += rowNetRevenue;
+            totalTaxLiability += rowTax;
+            totalTips += tips;
+            totalTransactionFees += fees;
+            totalCOGS += rowCOGS;
+
+            receiptsToProcess.push({
+                receiptId,
+                totalCollected: rowTotal,
+                netRevenue: rowNetRevenue, // replacing gross
+                tax: rowTax,
+                tips,
+                fees,
+                cogs: rowCOGS,
+                items: rowItems,
+                date: new Date(row.created_at || new Date())
+            });
         }
 
-        const totalCOGS = Array.from(cogsMap.values()).reduce((a, b) => a + b, 0);
-        const revenueVariance = totalDeclaredRevenue - totalExpectedRevenue;
+        // 3. Transaction Audit (Phase 2 Step A)
+        // Check Ledger for these Receipt IDs
+        const existingEntries = await prisma.journalEntry.findMany({
+            where: { reference: { in: Array.from(receiptIds) } },
+            include: { lines: { include: { account: true } } }
+        });
 
-        // 6. Execute (If enabled)
-        if (execute) {
-            if (!branchId) return NextResponse.json({ error: 'Branch ID required for execution' }, { status: 400 });
+        const ledgerMap = new Map<string, string>(); // ID -> Status
+        existingEntries.forEach(entry => {
+            // Check content of lines to determine Partial vs Duplicate
+            const hasRevenue = entry.lines.some(l => l.account.type === 'REVENUE');
+            const hasCOGS = entry.lines.some(l => l.account.type === 'EXPENSE' && l.account.name === 'COGS');
 
-            const adminUser = await prisma.user.findFirst();
-            const userId = adminUser?.id || 'system';
+            if (hasRevenue && hasCOGS) ledgerMap.set(entry.reference || '', 'DUPLICATE');
+            else if (hasRevenue) ledgerMap.set(entry.reference || '', 'PARTIAL');
+            else ledgerMap.set(entry.reference || '', 'UNKNOWN');
+        });
 
-            // Create the History Log
-            const report = await prisma.salesReport.create({
-                data: {
-                    fileName: file.name,
-                    uploadDate: new Date(),
-                    reportDate: reportDate, // Use extracted date
-                    totalRevenue: totalDeclaredRevenue,
-                    totalCOGS: totalCOGS,
-                    variance: revenueVariance,
-                    status: 'SUCCESS',
-                    branchId: branchId
+        // Determine Status for User
+        let status = 'NEW';
+        if (ledgerMap.size > 0) {
+            const allDupes = Array.from(receiptIds).every(id => ledgerMap.get(id) === 'DUPLICATE');
+            const allPartial = Array.from(receiptIds).every(id => ledgerMap.get(id) === 'PARTIAL');
+
+            if (allDupes) status = 'DUPLICATE';
+            else if (allPartial) status = 'PARTIAL';
+            else if (ledgerMap.size < receiptIds.size) status = 'MIXED'; // Some new, some old
+        }
+
+
+        // 4. Construct Flash P&L (Phase 2 Step B / Corrected Phase 10)
+        // Waterfall: Total Collected -> Net Revenue -> Net Operating Profit
+        const netOperatingProfit = totalNetRevenue - totalTransactionFees - totalCOGS;
+
+        const flashReport: FlashPnL[] = [
+            { metric: 'Total Collected', amount: totalCollected, logic: 'Cash + Tax' },
+            { metric: '(-) VAT Liability', amount: totalTaxLiability, logic: `Gov Money (${(VAT_RATE * 100).toFixed(0)}%)`, isNegative: true },
+            { metric: '(=) Net Revenue', amount: totalNetRevenue, logic: 'Real Income', isTotal: true },
+            { metric: '(-) Transaction Fees', amount: totalTransactionFees, logic: 'Visa(0.7%) + Talabat(25%)', isNegative: true },
+            { metric: '(-) Actual COGS', amount: totalCOGS, logic: 'Based on Recipe Ingredients', isNegative: true },
+            { metric: '(=) Net Operating Profit', amount: netOperatingProfit, logic: 'Net Revenue - Fees - COGS', isTotal: true }
+        ];
+
+        if (totalTips > 0) {
+            // Tips are informative now, but if they are collected, they are part of cash flow, but not P&L revenue usually.
+            // We'll show them as an info item.
+            flashReport.splice(6, 0, { metric: '(i) Total Tips', amount: totalTips, logic: 'Pass-through to Staff', isNegative: false });
+        }
+
+        // 5. Action Handler (Phase 2 Step C)
+        if (action === 'POST_ALL' || action === 'POST_REVENUE_ONLY' || action === 'POST_MISSING_COGS') {
+            if (!branchId) return NextResponse.json({ error: 'Branch ID required for posting.' }, { status: 400 });
+
+            console.log(`Executing Action: ${action} for ${receiptsToProcess.length} receipts.`);
+
+            const operations: any[] = [];
+
+            // Fetch Accounts
+            const accounts = await prisma.account.findMany();
+            const getAcc = (name: string) => accounts.find(a => a.name === name)?.id;
+
+            const accFoodSales = getAcc('Food Sales');
+            const accVAT = getAcc('VAT Payable');
+            const accMerchantFees = getAcc('Merchant Fees');
+            const accCOGS = getAcc('COGS');
+            const accInventory = getAcc('Inventory Asset');
+            const accCashClearing = getAcc('Cash Clearing');
+            const accTips = getAcc('Tips Payable'); // New Account for Refinement
+
+            if (!accFoodSales || !accVAT || !accMerchantFees || !accCOGS || !accInventory || !accCashClearing || !accTips) {
+                return NextResponse.json({ error: 'Critical Accounts Missing (including Tips Payable). Run Audit.' }, { status: 500 });
+            }
+
+            for (const r of receiptsToProcess) {
+                const ledgerStatus = ledgerMap.get(r.receiptId) || 'NEW';
+
+                // Skip if Duplicate
+                if (ledgerStatus === 'DUPLICATE') continue;
+
+                const lines: any[] = [];
+
+                // --- ENGINE A: REVENUE & FEES (Cash Run) ---
+                if (action === 'POST_ALL' || (action === 'POST_REVENUE_ONLY' && ledgerStatus === 'NEW')) {
+                    if (ledgerStatus === 'NEW') {
+
+                        // Credit Revenue (Net Revenue)
+                        lines.push({ accountId: accFoodSales, credit: r.netRevenue, debit: 0 });
+                        // Credit VAT
+                        if (r.tax > 0) lines.push({ accountId: accVAT, credit: r.tax, debit: 0 });
+                        // Credit Tips (New)
+                        if (r.tips > 0) lines.push({ accountId: accTips, credit: r.tips, debit: 0 });
+
+                        // Debit Expenses (Fees)
+                        if (r.fees > 0) lines.push({ accountId: accMerchantFees, debit: r.fees, credit: 0 });
+
+                        // Debit Cash Clearing (Net Cash Received)
+                        // Formula: (Total Collected + Tips) - Fees  (Assuming Tips are inclusive in collection if they came from online, or added)
+                        // Note: r.totalCollected usually includes tax. Does it include tips? 
+                        // The user said "Total Collected (Top Line): Use the Total column". Often POS total includes tips if charged.
+                        // Let's assume r.totalCollected is what hit the register (Items + Tax). 
+                        // If tips are separate column, they might be added on top or inside. 
+                        // Safest formula based on flow: Net Revenue + Tax + Tips - Fees = Cash.
+
+                        const cashIn = r.netRevenue + r.tax + (r.tips || 0);
+                        const netCash = cashIn - r.fees;
+                        lines.push({ accountId: accCashClearing, debit: netCash, credit: 0 });
+                    }
                 }
-            });
 
-            // Perform Inventory Deductions
-            const operations = [];
-
-            for (const [productId, qty] of deductionMap.entries()) {
-                if (qty <= 0) continue;
-
-                operations.push(
-                    prisma.inventoryLevel.upsert({
-                        where: { productId_branchId: { productId, branchId } },
-                        update: { quantityOnHand: { decrement: qty } },
-                        create: { productId, branchId, quantityOnHand: -qty }
-                    })
-                );
-
-                operations.push(
-                    prisma.inventoryTransaction.create({
-                        data: {
-                            type: 'SALE',
-                            productId,
-                            quantity: qty,
-                            sourceBranchId: branchId,
-                            userId,
-                            notes: `Sales Import: ${file.name}`,
-                            timestamp: reportDate // Use extracted date for transaction time
+                // --- ENGINE B: COGS & INVENTORY (Cost Run) ---
+                if (action === 'POST_ALL' || action === 'POST_MISSING_COGS') {
+                    if ((ledgerStatus === 'NEW' && action === 'POST_ALL') || (ledgerStatus === 'PARTIAL' && action === 'POST_MISSING_COGS')) {
+                        if (r.cogs > 0) {
+                            // Debit COGS
+                            lines.push({ accountId: accCOGS, debit: r.cogs, credit: 0 });
+                            // Credit Inventory
+                            lines.push({ accountId: accInventory, credit: r.cogs, debit: 0 });
                         }
-                    })
-                );
+                    }
+                }
+
+                if (lines.length > 0) {
+                    operations.push(
+                        prisma.journalEntry.create({
+                            data: {
+                                date: r.date,
+                                description: `Sales Import ${r.receiptId} [${action}]`,
+                                reference: r.receiptId,
+                                branchId: branchId,
+                                lines: { create: lines }
+                            }
+                        })
+                    );
+                }
             }
 
             if (operations.length > 0) {
@@ -313,40 +351,22 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json({
                 success: true,
-                executed: true,
-                reportId: report.id,
-                financials: {
-                    totalDeclaredRevenue,
-                    totalExpectedRevenue,
-                    revenueVariance,
-                    totalCOGS
-                },
-                auditReport,
-                message: `Executed deductions successfully. Date used: ${reportDate.toISOString().split('T')[0]}`
+                message: `Successfully posted ${operations.length} entries.`,
+                postedCount: operations.length
             });
         }
 
-        // Analysis Response
+        // Default: Analysis Response
         return NextResponse.json({
             success: true,
-            executed: false,
-            failedRows: failedRows,
-            dateDetected: {
-                date: reportDate,
-                source: dateSourceString
-            },
-            financials: {
-                totalDeclaredRevenue,
-                totalExpectedRevenue,
-                revenueVariance,
-                totalCOGS,
-                ROW_COUNT: parsedRows.length
-            },
-            auditReport: auditReport
+            status: status, // NEW, PARTIAL, DUPLICATE, MIXED
+            flashReport: flashReport,
+            zeroCostCount: zeroCostCount,
+            receiptCount: receiptsToProcess.length
         });
 
     } catch (error: any) {
-        console.error('Sales Import API Error:', error);
+        console.error('Smart Upload Error:', error);
         return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 });
     }
 }

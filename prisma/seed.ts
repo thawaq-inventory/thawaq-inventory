@@ -1,94 +1,66 @@
+
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
-    // Create a default branch
-    const branch = await prisma.branch.upsert({
-        where: { code: 'MAIN' },
-        update: {},
-        create: {
-            name: 'Main Branch',
-            code: 'MAIN',
-            address: '123 Main St',
-            phone: '123-456-7890',
-            isActive: true,
-        },
-    });
+    console.log('🌱 Starting Master Seed...');
 
-    console.log('✅ Default branch created/found:', branch.name);
-
-    // Create sample products
-    const products = [
-        {
-            name: 'Chicken Breast',
-            sku: 'CHK-001',
-            description: 'Fresh chicken breast',
-            stockLevel: 45,
-            unit: 'kg',
-            minStock: 10,
-            cost: 12.00,
-            price: 25.00,
-            branchId: branch.id,
-        },
-        {
-            name: 'Tomatoes',
-            sku: 'VEG-001',
-            description: 'Fresh tomatoes',
-            stockLevel: 30,
-            unit: 'kg',
-            minStock: 5,
-            cost: 2.50,
-            price: 5.00,
-            branchId: branch.id,
-        },
-        {
-            name: 'Olive Oil',
-            sku: 'OIL-001',
-            description: 'Extra virgin olive oil',
-            stockLevel: 15,
-            unit: 'L',
-            minStock: 3,
-            cost: 8.00,
-            price: 15.00,
-            branchId: branch.id,
-        },
-        {
-            name: 'Rice',
-            sku: 'GRN-001',
-            description: 'Basmati rice',
-            stockLevel: 100,
-            unit: 'kg',
-            minStock: 20,
-            cost: 1.50,
-            price: 3.00,
-            branchId: branch.id,
-        },
+    // 1. Ensure Core Branches Exist (The 4 Pillars)
+    const branches = [
+        { code: 'HQ', name: 'Al Thawaq HQ', type: 'HQ' },
+        { code: 'CK', name: 'Central Kitchen', type: 'CENTRAL_KITCHEN' },
+        { code: 'SW', name: 'Sweifieh', type: 'RESTAURANT' },
+        { code: 'KH', name: 'Khalda', type: 'RESTAURANT' },
     ];
 
-    for (const product of products) {
-        await prisma.product.upsert({
-            where: { sku: product.sku },
-            update: {},
-            create: product,
+    for (const b of branches) {
+        await prisma.branch.upsert({
+            where: { code: b.code },
+            update: { type: b.type }, // Ensure type is correct even if exists
+            create: {
+                name: b.name,
+                code: b.code,
+                type: b.type,
+                address: 'Amman, Jordan',
+                phone: '000-000-0000',
+                isActive: true
+            }
         });
+        console.log(`   ✅ Branch: ${b.name} (${b.type})`);
     }
 
-    // Create sample user
-    await prisma.user.upsert({
-        where: { username: 'admin' },
-        update: {},
-        create: {
-            name: 'Admin User',
-            username: 'admin',
-            password: '$2b$10$YourHashedPasswordHere', // This would be generated with bcrypt
-            pinCode: '1234',
-            role: 'ADMIN',
-            branchId: branch.id,
-        },
-    });
+    // 2. Ensure Super Admin Exists
+    const hq = await prisma.branch.findUnique({ where: { code: 'HQ' } });
 
-    console.log('✅ Database seeded successfully');
+    if (hq) {
+        const adminEmail = 'admin@althawaq.com';
+        const defaultPassword = 'admin'; // Change immediately in production
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+        const admin = await prisma.user.upsert({
+            where: { username: adminEmail }, // Using email as username for now or specific username
+            update: {
+                isSuperAdmin: true,
+                role: 'ADMIN',
+                branchId: hq.id // Linked to HQ
+            },
+            create: {
+                name: 'Super Admin',
+                username: adminEmail,
+                password: hashedPassword,
+                pinCode: '0000',
+                role: 'ADMIN',
+                isSuperAdmin: true,
+                branchId: hq.id,
+                isActive: true
+            }
+        });
+        console.log(`   ✅ Admin User: ${admin.username} (Linked to HQ)`);
+    }
+
+    console.log('✅ Master Seed Complete.');
 }
 
 main()

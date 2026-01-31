@@ -43,10 +43,26 @@ export async function GET(request: NextRequest) {
         // Feature 4: Filter out archived
         whereClause.isArchived = false;
 
+        // VISIBILITY LOGIC (Phase 3.2): Prevent Data Leaks
+        // If we are in a specific branch context, we show Global Items + My Branch Items.
+        // We HIDE items belonging to other branches.
+        if (currentBranchId && currentBranchId !== 'HEAD_OFFICE') {
+            whereClause.AND = [
+                ...(whereClause.AND || []),
+                {
+                    OR: [
+                        { branchId: null },          // Global Menu
+                        { branchId: currentBranchId } // Local Specials
+                    ]
+                }
+            ];
+        }
+
         let products;
 
         if (currentBranchId === 'HEAD_OFFICE') {
             // Global View: Fetch all products with ALL stock levels to sum them up
+            // HQ sees everything, so no extra visibility filter needed on 'whereClause' beyond what's there.
             products = await prisma.product.findMany({
                 where: whereClause,
                 include: {

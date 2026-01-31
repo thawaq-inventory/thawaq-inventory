@@ -11,17 +11,14 @@ datasource db {
 }
 
 // Branch/Franchise Management
-enum BranchType {
-  KITCHEN
-  BRANCH
-  WAREHOUSE
-}
+// Branch/Franchise Management
+// enum BranchType removed in favor of String for flexibility
 
 model Branch {
   id          String   @id @default(uuid())
   name        String   // "Downtown", "Mall Location", etc.
   code        String   @unique // Short code like "DT", "ML"
-  type        BranchType @default(BRANCH) // Kitchen, Branch, Warehouse
+  type        String   @default("RESTAURANT") // "HQ", "CENTRAL_KITCHEN", "RESTAURANT"
   address     String?
   phone       String?
   email       String?
@@ -50,6 +47,7 @@ model Branch {
   expenses    Expense[]
   payrollTransactions PayrollTransaction[]
   clockEntries ClockEntry[]
+  journalEntries JournalEntry[]
   
   // New Inventory Relations
   inventoryLevels InventoryLevel[]
@@ -121,8 +119,9 @@ model Product {
   maxStock    Float    @default(0) // Par level maximum
   
   // Financials
-  cost        Float    @default(0)
-  price       Float    @default(0)
+  cost        Float    @default(0) // Unit Cost (Calculated)
+  packPrice   Float    @default(0) // Purchase Price of the Pack/Box
+  price       Float    @default(0) // Selling Price
 
   // Foodics Integration
   foodicsId   String?  @unique
@@ -229,6 +228,12 @@ model JournalEntry {
   updatedAt   DateTime            @updatedAt
   lines       JournalEntryLine[]
   expense     Expense?
+  payrollTransaction PayrollTransaction?
+  
+  branch      Branch?             @relation(fields: [branchId], references: [id])
+  branchId    String?
+
+  @@index([branchId])
 }
 
 model JournalEntryLine {
@@ -643,6 +648,11 @@ model PayrollTransaction {
   reference       String?  // Payment reference number
   status          String   @default("waiting_bank_approval") // waiting_bank_approval, approved, rejected, failed
   
+  // Accounting Integration
+  glStatus        String   @default("PENDING") // PENDING, POSTED
+  journalEntry    JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  journalEntryId  String?  @unique
+
   // Banking details (employee account)
   accountNumber   String?
   bankCode        String?
@@ -731,6 +741,25 @@ model PosMenuItem {
   @@index([posString])
 }
 
+// Payment Methods & Fee Rates
+model PaymentMethod {
+  id            String   @id @default(uuid())
+  name          String   @unique // "Visa", "Talabat", "Careem", "Cash"
+  feeRate       Float    @default(0) // 0.007 for 0.7%, 0.25 for 25%
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique // "VAT_RATE"
+  value     String   // "0.16"
+  description String?
+  updatedAt DateTime @updatedAt
+}
+
 // Sales History Report Log
 model SalesReport {
   id              String   @id @default(uuid())
@@ -739,6 +768,8 @@ model SalesReport {
   reportDate      DateTime? // Extracted from file
   
   totalRevenue    Float    @default(0)
+  netRevenue      Float    @default(0) // Gross Sales (My Money)
+  taxAmount       Float    @default(0) // Gov Money
   totalCOGS       Float    @default(0)
   variance        Float    @default(0)
   

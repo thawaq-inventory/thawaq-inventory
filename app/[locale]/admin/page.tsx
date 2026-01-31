@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { DollarSign, TrendingUp, FileText, Users, ArrowRight, Receipt, Package } from "lucide-react";
 import { Link } from '@/i18n/routing';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
 
 interface DashboardData {
     monthlyRevenue: number;
@@ -27,18 +28,20 @@ export default function DashboardPage() {
         try {
             // For now, we'll fetch basic data from existing APIs
             // In a real app, you'd create a dedicated dashboard API endpoint
-            const [vendorsRes, analyticsRes] = await Promise.all([
+            const [vendorsRes, analyticsRes, dashboardRes] = await Promise.all([
                 fetch('/api/accounting/vendors'),
-                fetch('/api/analytics')
+                fetch('/api/analytics'),
+                fetch('/api/accounting/dashboard')
             ]);
 
             const vendors = await vendorsRes.json();
             const analytics = await analyticsRes.json();
+            const dashboard = await dashboardRes.json();
 
             setData({
-                monthlyRevenue: 0, // Would come from accounting data
-                monthlyExpenses: 0,
-                netProfit: 0,
+                monthlyRevenue: dashboard.metrics?.monthlyRevenue || 0,
+                monthlyExpenses: dashboard.metrics?.monthlyExpenses || 0,
+                netProfit: dashboard.metrics?.netProfit || 0,
                 pendingInvoices: 0,
                 vendorCount: vendors.length || 0,
                 lowStockItems: analytics.metrics?.lowStockItems || 0
@@ -75,7 +78,7 @@ export default function DashboardPage() {
                     <CardContent>
                         <div className="text-3xl font-bold text-white animated-number">{data.monthlyRevenue.toFixed(0)} JOD</div>
                         <p className="text-xs text-white/80 mt-1">
-                            Current month
+                            Current month (Ex-VAT)
                         </p>
                     </CardContent>
                 </Card>
@@ -119,6 +122,9 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Waterfall Chart */}
+            <WaterfallChartSection />
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -226,5 +232,58 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+// Separate Component for the Chart to handle client-side logic cleanly
+function WaterfallChartSection() {
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/accounting/dashboard')
+            .then(res => res.json())
+            .then(data => {
+                if (data.waterfall) setChartData(data.waterfall);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Failed to fetch waterfall", err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return <Card className="h-64 flex items-center justify-center"><div className="text-slate-400">Loading Financial Visuals...</div></Card>;
+    if (!chartData.length) return null;
+
+    return (
+        <Card className="col-span-4">
+            <CardHeader>
+                <CardTitle>Financial Performance (Waterfall)</CardTitle>
+                <CardDescription>Breakdown of Revenue to Net Profit</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip
+                            formatter={(value: number) => `${value.toFixed(2)} JOD`}
+                            cursor={{ fill: 'transparent' }}
+                        />
+                        <ReferenceLine y={0} stroke="#000" />
+                        <Bar dataKey="value" fill="#8884d8">
+                            {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={
+                                    entry.type === 'total' ? '#3b82f6' :
+                                        entry.type === 'deduction' ? '#ef4444' :
+                                            '#22c55e'
+                                } />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
     );
 }

@@ -1,12 +1,25 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { BranchMultiSelect } from "@/components/accounting/BranchMultiSelect";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrendingUp, TrendingDown, DollarSign, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+
+interface PLAccount {
+    code: string;
+    name: string;
+    type: string;
+    total: number;
+}
 
 interface PLData {
     period: {
@@ -17,10 +30,14 @@ interface PLData {
         revenue: number;
         expenses: number;
         netProfit: number;
-        margin: string;
+        margin: string | number;
+        operatingRevenue?: number;
+        operatingExpenses?: number;
+        operatingProfit?: number;
+        operatingMargin?: string | number;
     };
-    revenueAccounts: Array<{ code: string, name: string, type: string, total: number }>;
-    expenseAccounts: Array<{ code: string, name: string, type: string, total: number }>;
+    revenueAccounts: PLAccount[];
+    expenseAccounts: PLAccount[];
 }
 
 export default function ReportsPage() {
@@ -28,6 +45,7 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(true);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
 
     useEffect(() => {
         // Set default dates to current month
@@ -43,13 +61,14 @@ export default function ReportsPage() {
         if (startDate && endDate) {
             fetchPL();
         }
-    }, [startDate, endDate]);
+    }, [startDate, endDate, selectedBranches]); // Re-fetch on branch change
 
     const fetchPL = async () => {
         setLoading(true);
         try {
+            const branchQuery = selectedBranches.length > 0 ? `&branches=${selectedBranches.join(',')}` : '';
             const response = await fetch(
-                `/api/accounting/reports/pl?startDate=${startDate}&endDate=${endDate}`
+                `/api/accounting/reports/pl?startDate=${startDate}&endDate=${endDate}${branchQuery}`
             );
             const data = await response.json();
             setPLData(data);
@@ -66,19 +85,19 @@ export default function ReportsPage() {
         <div className="max-w-6xl mx-auto space-y-6">
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Profit & Loss Statement</h1>
-                <p className="text-slate-500 mt-1">Financial performance overview</p>
+                <p className="text-slate-500 mt-1">Financial performance and multi-branch consolidation</p>
             </div>
 
-            {/* Date Range Selector */}
+            {/* Date Range & Branch Selector */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Calendar className="w-5 h-5" />
-                        Report Period
+                        Report Settings
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-end gap-4">
+                    <div className="flex flex-col md:flex-row md:items-end gap-4">
                         <div className="space-y-2">
                             <Label>Start Date</Label>
                             <Input
@@ -94,6 +113,15 @@ export default function ReportsPage() {
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Branches (Consolidation)</Label>
+                            <div className="flex">
+                                <BranchMultiSelect
+                                    selectedBranches={selectedBranches}
+                                    onSelectionChange={setSelectedBranches}
+                                />
+                            </div>
                         </div>
                         <Button onClick={fetchPL} disabled={loading}>
                             {loading ? 'Loading...' : 'Generate Report'}

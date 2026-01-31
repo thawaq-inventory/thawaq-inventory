@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseUpload } from '@/lib/parsers/file-parser';
 
-// Expected normalized headers
+// Expected normalized headers (Snake Case from CSV)
 interface ProductImportRow {
     name: string;
     sku: string;
     category?: string;
-    base_unit?: string;
-    purchase_unit?: string;
-    conversion_factor?: string | number;
-    initial_cost?: string | number;
+    base_unit?: string;         // 'Grams', 'Piece'
+    purchase_unit?: string;     // 'Box', 'Kg'
+    conversion_factor?: string | number; // 1000, 12, 1
+    purchase_price?: string | number;   // 5.00, 2.50
 }
 
 export async function POST(req: NextRequest) {
@@ -22,15 +22,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
 
-        // 1. Parse using Robust Parser (returns normalized keys: 'name', 'sku', 'initial_cost' etc)
+        // 1. Parse using Robust Parser
         const { data, errors } = await parseUpload<ProductImportRow>(file);
 
         if (errors.length > 0) {
             return NextResponse.json({ error: 'Parsing Failed', details: errors }, { status: 400 });
         }
 
-        // 2. Fetch ALL Active Branches for Auto-Seeding (Global Scope Logic)
-        // We do NOT require a branch_id from the client.
+        // 2. Fetch ALL Active Branches for Auto-Seeding
         const activeBranches = await prisma.branch.findMany({
             where: { isActive: true },
             select: { id: true, name: true }
@@ -45,41 +44,50 @@ export async function POST(req: NextRequest) {
             const name = row.name ? String(row.name).trim() : null;
             const sku = row.sku ? String(row.sku).trim() : null;
 
-            if (!name || !sku) continue; // Skip empty rows
+            if (!name && !sku) continue; // Skip if both missing
 
-            // Parse Numerics
-            const cost = row.initial_cost ? Number(row.initial_cost) : 0;
+            // Fallback Name/SKU
+            const finalSku = sku || name?.substring(0, 10).toUpperCase().replace(/\s+/g, '-') || 'UNK';
+            const finalName = name || sku || 'Unknown Item';
+
+            // Parse Numerics & Units
             const convFactor = row.conversion_factor ? Number(row.conversion_factor) : 1;
+            const packPrice = row.purchase_price ? Number(row.purchase_price) : 0;
             const unit = row.base_unit || 'UNIT';
-            const purchaseUnit = row.purchase_unit;
+            const purchaseUnit = row.purchase_unit || 'PACK'; // Default to Pack if missing
+
+            // LOGIC ENGINE: Cost Calculation
+            let calculatedCost = 0;
+            if (packPrice > 0 && convFactor > 0) {
+                calculatedCost = packPrice / convFactor;
+            }
 
             try {
                 // A. Upsert Product
                 const product = await prisma.product.upsert({
-                    where: { sku: sku },
+                    where: { sku: finalSku },
                     update: {
-                        name,
+                        name: finalName,
                         unit,
                         purchaseUnit,
                         conversionFactor: convFactor,
-                        // If re-importing, we update the cost? 
-                        // User said "Use Initial_Cost to set starting WAC". 
-                        // Updating cost here effectively sets/resets it.
-                        cost: cost,
+                        packPrice: packPrice, // Save Pack Price
+                        cost: calculatedCost, // Save Calculated Unit Cost
+                        description: row.category // Store Category as description
                     },
                     create: {
-                        name,
-                        sku,
+                        name: finalName,
+                        sku: finalSku,
                         unit,
                         purchaseUnit,
                         conversionFactor: convFactor,
-                        cost: cost,
-                        description: row.category // Map Category to description for now
+                        packPrice: packPrice,
+                        cost: calculatedCost,
+                        description: row.category
                     }
                 });
 
                 // B. Auto-Seed Inventory for ALL Branches
-                // "Global Scope" Requirement: Create InventoryLevel if missing.
                 const seedOps = [];
                 for (const branch of activeBranches) {
                     seedOps.push(
@@ -105,7 +113,7 @@ export async function POST(req: NextRequest) {
                 createdCount++;
             } catch (e: any) {
                 errorCount++;
-                errorDetails.push(`SKU ${sku}: ${e.message}`);
+                errorDetails.push(`SKU ${finalSku}: ${e.message}`);
             }
         }
 
