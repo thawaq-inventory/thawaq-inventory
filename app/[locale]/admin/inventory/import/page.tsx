@@ -23,10 +23,11 @@ export default function ImportPage() {
             </div>
 
             <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-4 max-w-[800px]">
+                <TabsList className="grid w-full grid-cols-5 max-w-[1000px]">
                     <TabsTrigger value="sales-report">Sales Report</TabsTrigger>
                     <TabsTrigger value="products">Import Products</TabsTrigger>
                     <TabsTrigger value="prices">Price List (POS)</TabsTrigger>
+                    <TabsTrigger value="channel-prices">Channel Pricing</TabsTrigger>
                     <TabsTrigger value="recipe-map">Recipe Map</TabsTrigger>
                 </TabsList>
 
@@ -40,6 +41,10 @@ export default function ImportPage() {
 
                 <TabsContent value="prices" className="space-y-4 mt-4">
                     <ImportPricesTab />
+                </TabsContent>
+
+                <TabsContent value="channel-prices" className="space-y-4 mt-4">
+                    <ChannelPricingTab />
                 </TabsContent>
 
                 <TabsContent value="recipe-map" className="space-y-4 mt-4">
@@ -478,3 +483,74 @@ function ResultCard({ result }: { result: any }) {
         </div>
     )
 }
+
+function ChannelPricingTab() {
+    const [file, setFile] = useState<File | null>(null);
+    const [selectedChannel, setSelectedChannel] = useState("TALABAT");
+    const [uploading, setUploading] = useState(false);
+    const [result, setResult] = useState<any>(null);
+
+    const handleUpload = async () => {
+        if (!file) return;
+        setUploading(true);
+        setResult(null);
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("channel", selectedChannel);
+
+        try {
+            const res = await fetch("/api/inventory/channel-pricing", { method: "POST", body: formData });
+            const data = await res.json();
+            setResult({ success: res.ok, data });
+        } catch (e) {
+            setResult({ success: false, data: { error: "Upload failed" } });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Channel-Specific Pricing</CardTitle>
+                <CardDescription>
+                    Upload CSV with <b>POS_String, Price</b> for a specific sales channel (Talabat, Careem, etc.).
+                    <br />This allows different selling prices per channel while using the same recipes for COGS.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <Label>Select Channel</Label>
+                    <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select channel..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="TALABAT">Talabat</SelectItem>
+                            <SelectItem value="CAREEM">Careem</SelectItem>
+                            <SelectItem value="DELIVEROO">Deliveroo</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                        Prices for {selectedChannel} channel. In-House prices are managed in "Price List (POS)" tab.
+                    </p>
+                </div>
+
+                <div className="grid w-full max-w-sm items-center gap-1.5">
+                    <Label>CSV File</Label>
+                    <Input type="file" accept=".csv, .xlsx, .xls, .xlsm" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                    <p className="text-xs text-muted-foreground">
+                        Format: <code>POS_String, Price</code> (e.g., "Zinger Burger, 8.50")
+                    </p>
+                </div>
+
+                <Button onClick={handleUpload} disabled={!file || uploading}>
+                    {uploading ? "Importing..." : `Import ${selectedChannel} Prices`}
+                </Button>
+                {result && <ResultCard result={result} />}
+            </CardContent>
+        </Card>
+    );
+}
+
