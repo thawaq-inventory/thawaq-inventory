@@ -4,22 +4,28 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
+import { Loader2, TrendingDown, TrendingUp, AlertTriangle, CheckCircle, Scale } from "lucide-react";
 import { getCostingReport, CostingRow } from '@/app/actions/analytics';
+import { getRevenueAudit, AuditResult } from '@/app/actions/audit';
 
 export default function ProfitabilityInsights() {
     const [data, setData] = useState<CostingRow[]>([]);
+    const [audit, setAudit] = useState<AuditResult | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function load() {
             setLoading(true);
-            const report = await getCostingReport();
+            const [report, auditResult] = await Promise.all([
+                getCostingReport(),
+                getRevenueAudit()
+            ]);
 
             // Default Sort: Highest Cost % First
             const sorted = report.sort((a, b) => b.costPercent - a.costPercent);
 
             setData(sorted);
+            setAudit(auditResult);
             setLoading(false);
         }
         load();
@@ -45,6 +51,48 @@ export default function ProfitabilityInsights() {
                     </Card>
                 </div>
             </div>
+
+            {/* REVENUE AUDIT CARD */}
+            {audit && (
+                <div className="animate-in slide-in-from-top-4 duration-500">
+                    <Card className={`border-l-4 ${audit.status === 'MATCH' ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center gap-2">
+                                {audit.status === 'MATCH'
+                                    ? <CheckCircle className="w-5 h-5 text-green-600" />
+                                    : <Scale className="w-5 h-5 text-orange-600" />
+                                }
+                                <CardTitle className="text-lg">Financial Integrity Check</CardTitle>
+                            </div>
+                            <CardDescription>Compares Reported Revenue (POS Cash) vs Theoretical Revenue (Menu Prices).</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex gap-8 items-center">
+                                <div>
+                                    <p className="text-xs text-slate-500 uppercase font-bold">Reported (POS)</p>
+                                    <p className="text-2xl font-bold text-slate-800">{audit.reportedRevenue.toFixed(2)} JOD</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-500 uppercase font-bold">Theoretical (System)</p>
+                                    <p className="text-2xl font-bold text-slate-800">{audit.theoreticalRevenue.toFixed(2)} JOD</p>
+                                </div>
+                                <div className="h-10 w-px bg-slate-200 mx-2"></div>
+                                <div>
+                                    <p className="text-xs text-slate-500 uppercase font-bold">Discrepancy</p>
+                                    <p className={`text-2xl font-mono font-bold ${audit.status === 'MATCH' ? 'text-green-600' : 'text-orange-600'}`}>
+                                        {audit.discrepancy.toFixed(2)} JOD
+                                    </p>
+                                    {audit.status === 'MISMATCH' && (
+                                        <Badge variant="outline" className="mt-1 text-orange-600 border-orange-200 bg-orange-50">
+                                            Revenue Mismatch Detected
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             <Card>
                 <CardHeader>

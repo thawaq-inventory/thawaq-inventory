@@ -304,6 +304,23 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'Critical Accounts Missing (including Tips Payable). Run Audit.' }, { status: 500 });
             }
 
+            // [AUDIT] 1. Create Sales Report Header
+            // We create this first so we can link logs to it.
+            const salesReport = await prisma.salesReport.create({
+                data: {
+                    fileName: (file as File).name || 'Upload',
+                    branchId: branchId,
+                    totalRevenue: totalCollected,
+                    netRevenue: totalNetRevenue,
+                    taxAmount: totalTaxLiability,
+                    totalCOGS: totalCOGS,
+                    status: 'PENDING'
+                }
+            });
+
+            // [AUDIT] 2. Prepare Item Logs
+            const itemLogData: any[] = [];
+
             for (const r of receiptsToProcess) {
                 const ledgerStatus = ledgerMap.get(r.receiptId) || 'NEW';
 
@@ -352,6 +369,29 @@ export async function POST(req: NextRequest) {
                     }
                 }
 
+                // [AUDIT] 3. Collect Item Logs (For Revenue Audit)
+                if (ledgerStatus === 'NEW') {
+                    for (const item of r.items) {
+                        itemLogData.push({
+                            posString: item.name,
+                            quantity: item.qty,
+                            totalSold: 0, // Cannot determine item-level cash from total, audit uses Quantity * MenuPrice
+                            salesReportId: salesReport.id,
+                            importDate: r.date
+                        });
+                        // Variances/Modifiers
+                        item.modifiers.forEach((mod: any) => {
+                            itemLogData.push({
+                                posString: mod.name,
+                                quantity: item.qty * mod.qty,
+                                totalSold: 0,
+                                salesReportId: salesReport.id,
+                                importDate: r.date
+                            });
+                        });
+                    }
+                }
+
                 if (lines.length > 0) {
                     operations.push(
                         prisma.journalEntry.create({
@@ -368,7 +408,31 @@ export async function POST(req: NextRequest) {
             }
 
             if (operations.length > 0) {
+                // [AUDIT] 4. Add Log Insertion to Transaction
+                if (itemLogData.length > 0) {
+                    // Split into chunks if too large (Prisma safety)
+                    const chunkSize = 1000;
+                    for (let i = 0; i < itemLogData.length; i += chunkSize) {
+                        operations.push(prisma.salesItemLog.createMany({
+                            data: itemLogData.slice(i, i + chunkSize)
+                        }));
+                    }
+                }
+
                 await prisma.$transaction(operations);
+
+                // [AUDIT] 5. Mark Report Success
+                await prisma.salesReport.update({
+                    where: { id: salesReport.id },
+                    data: { status: 'SUCCESS' }
+                });
+            } else {
+                // If no operations (e.g. all duplicates), mark report as SKIPPED or FAILED?
+                // Technically duplicates means we didn't do anything new.
+                await prisma.salesReport.update({
+                    where: { id: salesReport.id },
+                    data: { status: 'DUPLICATE_SKIPPED' }
+                });
             }
 
             return NextResponse.json({

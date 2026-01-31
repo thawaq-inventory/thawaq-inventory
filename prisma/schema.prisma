@@ -784,6 +784,22 @@ model SalesReport {
   branch          Branch   @relation(fields: [branchId], references: [id])
   branchId        String
   
+  salesItemLogs   SalesItemLog[]
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// Financial Integrity / Audit Log
+model SalesItemLog {
+  id          String   @id @default(uuid())
+  posString   String   // "Burger"
+  quantity    Float
+  totalSold   Float    // Cash value from POS for this line (Qty * Price)
+  
+  importDate  DateTime @default(now())
+  
+  // Optional link to the source report file
+  salesReport   SalesReport? @relation(fields: [salesReportId], references: [id])
+  salesReportId String?
 }
