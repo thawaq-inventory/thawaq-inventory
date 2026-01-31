@@ -48,8 +48,8 @@ export default function SalesHistoryPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Sales Analysis History</h1>
-                    <p className="text-slate-500 dark:text-slate-400">Log of all uploaded sales reports and their variance analysis.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 Analysis History</h1>
+                    <p className="text-slate-500 of all uploaded sales reports and their variance analysis.</p>
                 </div>
             </div>
 
@@ -83,10 +83,10 @@ export default function SalesHistoryPage() {
                                 {reports.map((report) => (
                                     <TableRow
                                         key={report.id}
-                                        className="cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5"
+                                        className="cursor-pointer hover:bg-slate-50
                                         onClick={() => router.push(`/admin/inventory/history/${report.id}`)}
                                     >
-                                        <TableCell className="font-medium text-slate-900 dark:text-slate-200">
+                                        <TableCell className="font-medium text-slate-900
                                             {format(new Date(report.uploadDate), 'MMM dd, HH:mm')}
                                         </TableCell>
                                         <TableCell>{report.fileName}</TableCell>
@@ -95,7 +95,7 @@ export default function SalesHistoryPage() {
                                         </TableCell>
                                         <TableCell>
                                             {report.reportDate ?
-                                                <span className="text-slate-900 dark:text-white font-medium">{format(new Date(report.reportDate), 'yyyy-MM-dd')}</span>
+                                                <span className="text-slate-900 font-medium">{format(new Date(report.reportDate), 'yyyy-MM-dd')}</span>
                                                 : <span className="text-slate-400 italic">N/A</span>
                                             }
                                         </TableCell>

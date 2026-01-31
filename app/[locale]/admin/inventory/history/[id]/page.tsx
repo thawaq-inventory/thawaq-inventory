@@ -66,8 +66,8 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                     <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Analysis View</h1>
-                    <p className="text-slate-500 dark:text-slate-400">
+                    <h1 className="text-2xl font-bold text-slate-900 View</h1>
+                    <p className="text-slate-500
                         {report.fileName} • {format(new Date(report.uploadDate), 'MMM dd, yyyy HH:mm')}
                     </p>
                 </div>
@@ -89,24 +89,24 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
             {/* Financial Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Revenue */}
-                <Card className="bg-white dark:bg-[#151B28] border-slate-200 dark:border-white/5">
+                <Card className="bg-white border-slate-200
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Declared Revenue</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-500 Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                        <div className="text-2xl font-bold text-slate-900
                             JOD {report.totalRevenue.toFixed(2)}
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* COGS */}
-                <Card className="bg-white dark:bg-[#151B28] border-slate-200 dark:border-white/5">
+                <Card className="bg-white border-slate-200
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Total COGS</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-500 COGS</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                        <div className="text-2xl font-bold text-slate-900
                             JOD {report.totalCOGS.toFixed(2)}
                         </div>
                         <p className="text-xs text-slate-400 mt-1">Based on Live WAC</p>
@@ -114,9 +114,9 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                 </Card>
 
                 {/* Variance */}
-                <Card className="bg-white dark:bg-[#151B28] border-slate-200 dark:border-white/5">
+                <Card className="bg-white border-slate-200
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 dark:text-slate-400">Revenue Variance</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-500 Variance</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className={`text-2xl font-bold ${report.variance < -1 ? "text-red-500" : "text-emerald-500"}`}>
@@ -128,7 +128,7 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
             </div>
 
             {/* Details Section */}
-            <Card className="bg-white dark:bg-[#151B28] border-slate-200 dark:border-white/5">
+            <Card className="bg-white border-slate-200
                 <CardHeader>
                     <CardTitle>Report Details</CardTitle>
                     <CardDescription>Metadata and execution status</CardDescription>
@@ -137,23 +137,23 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <p className="text-sm font-medium text-slate-500">Transaction Date used</p>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-white">
+                            <p className="text-lg font-semibold text-slate-900
                                 {report.reportDate ? format(new Date(report.reportDate), 'yyyy-MM-dd') : 'N/A'}
                             </p>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Branch</p>
-                            <p className="text-lg font-semibold text-slate-900 dark:text-white">{report.branch?.name}</p>
+                            <p className="text-lg font-semibold text-slate-900
                         </div>
                         {report.errorDetails && (
-                            <div className="col-span-2 p-4 bg-red-50 dark:bg-red-900/20 rounded-md">
-                                <p className="text-sm text-red-600 dark:text-red-400 font-medium">Error Details:</p>
-                                <p className="text-sm text-red-700 dark:text-red-300">{report.errorDetails}</p>
+                            <div className="col-span-2 p-4 bg-red-50 rounded-md">
+                                <p className="text-sm text-red-600 font-medium">Error Details:</p>
+                                <p className="text-sm text-red-700
                             </div>
                         )}
                         <div className="col-span-2">
                             <p className="text-sm font-medium text-slate-500">Note</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-300">
+                            <p className="text-sm text-slate-600
                                 This report was processed on {format(new Date(report.uploadDate), 'PP pp')}.
                                 Inventory deductions were applied based on the recipes active at that time.
                             </p>
