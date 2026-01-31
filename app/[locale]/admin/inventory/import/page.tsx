@@ -338,6 +338,16 @@ function SalesReportTab() {
                                     ⚠️ <b>{analysisResult.zeroCostCount} Items</b> have $0.00 cost mapped.
                                     This will skew your COGS lower than actual.
                                 </p>
+                                {analysisResult.debug?.zeroCostCulprits && (
+                                    <div className="mt-2 p-2 bg-orange-100 rounded text-xs font-mono text-orange-900 border border-orange-200">
+                                        <p className="font-bold mb-1">Top Culprits (Sample):</p>
+                                        <ul className="list-disc pl-4">
+                                            {analysisResult.debug.zeroCostCulprits.map((name: string, idx: number) => (
+                                                <li key={idx}>{name}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
