@@ -140,11 +140,23 @@ export function parseTabSenseItems(itemsString: string): ParsedItem[] {
             clean = clean.split('(')[0].trim();
 
             if (clean) {
-                results.push({
-                    name: clean,
-                    qty: 1,
-                    modifiers: []
-                });
+                // Improved parsing for Strategy 2: Check for "Qty Name" or "Qty x Name" pattern
+                // Regex: Start with Number, optional space, optional 'x', then Name
+                const qtyMatch = clean.match(/^(\d+(?:\.\d+)?)\s*(?:[xX\*]\s*)?\s+(.+)$/);
+
+                if (qtyMatch) {
+                    results.push({
+                        name: qtyMatch[2].trim(),
+                        qty: parseFloat(qtyMatch[1]),
+                        modifiers: []
+                    });
+                } else {
+                    results.push({
+                        name: clean,
+                        qty: 1,
+                        modifiers: []
+                    });
+                }
             }
         }
     }
