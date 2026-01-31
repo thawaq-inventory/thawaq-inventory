@@ -34,12 +34,13 @@ export async function POST(req: NextRequest) {
         }
 
         // Parse the uploaded file
-        const rows = await parseUpload<PricingRow>(file);
+        const parsed = await parseUpload<PricingRow>(file);
 
-        if (!rows || rows.length === 0) {
+        if (!parsed.data || parsed.data.length === 0) {
             return NextResponse.json({ error: 'No data found in file' }, { status: 400 });
         }
 
+        const rows = parsed.data;
         let created = 0;
         let updated = 0;
         let errors = 0;
