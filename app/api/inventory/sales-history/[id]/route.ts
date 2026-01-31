@@ -26,7 +26,7 @@ export async function GET(
         // Fetch Arabic Names mappings for these items
         if (!r.salesItemLogs) return NextResponse.json(report);
 
-        const posStrings = Array.from(new Set(r.salesItemLogs.map((i: any) => i.posString)));
+        const posStrings = Array.from(new Set(r.salesItemLogs.map((i: any) => i.posString))) as string[];
         // @ts-ignore
         const mappings = await prisma.productMapping.findMany({
             where: { posString: { in: posStrings } },
