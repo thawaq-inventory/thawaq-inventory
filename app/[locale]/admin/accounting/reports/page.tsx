@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { BranchMultiSelect } from "@/components/accounting/BranchMultiSelect";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
