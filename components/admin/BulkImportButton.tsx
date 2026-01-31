@@ -1,10 +1,8 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, Loader2, FileSpreadsheet } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { Loader2, FileSpreadsheet } from 'lucide-react';
 
 interface BulkImportButtonProps {
     apiEndpoint: string;
@@ -15,7 +13,6 @@ interface BulkImportButtonProps {
 export function BulkImportButton({ apiEndpoint, label, onSuccess }: BulkImportButtonProps) {
     const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { toast } = useToast();
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -35,20 +32,13 @@ export function BulkImportButton({ apiEndpoint, label, onSuccess }: BulkImportBu
 
             if (!res.ok) throw new Error(data.error || 'Import failed');
 
-            toast({
-                title: "Import Successful",
-                description: data.message,
-                variant: "default",
-            });
+            alert(`Import Successful: ${data.message}`);
 
             if (onSuccess) onSuccess();
 
         } catch (error: any) {
-            toast({
-                title: "Import Error",
-                description: error.message,
-                variant: "destructive",
-            });
+            console.error(error);
+            alert(`Import Error: ${error.message}`);
         } finally {
             setIsLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
