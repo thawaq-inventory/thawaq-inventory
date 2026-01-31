@@ -73,14 +73,15 @@ export function parseSalesReportLine(line: string): ParsedItem[] {
 
 /**
  * Parses TabSense "Items Breakdown" column.
- * - Items separated by \n
+ * - Items separated by \n (or \r\n)
  * - "Note:" indicates comments to be ignored (truncate line)
  * - Returns aggregated quantities
  */
 export function parseTabSenseItems(cellContent: string): ParsedItem[] {
     if (!cellContent || typeof cellContent !== 'string') return [];
 
-    const lines = cellContent.split('\n');
+    // Robust split for Excel/CSV handling of newlines
+    const lines = cellContent.split(/\r\n|\n|\r/);
     const itemCounts = new Map<string, number>();
 
     for (const line of lines) {

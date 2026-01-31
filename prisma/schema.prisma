@@ -452,6 +452,7 @@ model Recipe {
   
   ingredients   RecipeIngredient[]
   productionBatches ProductionBatch[]
+  productMappings ProductMapping[]
 }
 
 model RecipeIngredient {
@@ -717,11 +718,15 @@ model ProductMapping {
   id            String   @id @default(uuid())
   posString     String   @unique // The exact text from POS (e.g. "Spicy Zinger")
   
-  // What to deduct
+  // Method 1: Direct Deduct (Simple)
   product       Product? @relation(fields: [productId], references: [id])
   productId     String?  // The SKU/Product in our system
   
-  quantity      Float    @default(1) // Amount to deduct
+  // Method 2: Recipe Deduct (Advanced)
+  recipe        Recipe?  @relation(fields: [recipeId], references: [id])
+  recipeId      String?
+  
+  quantity      Float    @default(1) // Amount to deduct (if direct product)
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
