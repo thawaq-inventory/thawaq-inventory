@@ -28,7 +28,7 @@ export function Logo({ className, variant = 'default', size = 'md' }: LogoProps)
                 alt="Al Thawaq"
                 fill
                 priority
-                className="object-contain transition-all duration-300 dark:brightness-0 dark:invert"
+                className="object-contain transition-all duration-300"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
         </div>

@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, ArrowLeft, Check, ShoppingCart, Trash2, Edit2, Send, X, Plus, Minus } from "lucide-react";
+import { useProductName, useUnitName } from '@/hooks/use-localization';
 
 interface Product {
     id: string;
     name: string;
+    arabicName?: string | null;
     sku: string;
     stockLevel: number;
     unit: string;
@@ -208,7 +210,7 @@ export default function ReceivingPage() {
                                 {draftItems.map((item) => (
                                     <div key={item.productId} className="flex items-center gap-4 p-4 border-b border-slate-100 last:border-0">
                                         <div className="flex-1">
-                                            <h3 className="font-semibold text-slate-900">{item.productName}</h3>
+                                            <h3 className="font-semibold text-slate-900">{useProductName({ name: item.productName, arabicName: products.find(p => p.id === item.productId)?.arabicName })}</h3>
                                             <p className="text-sm text-slate-500">
                                                 <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-xs font-mono">{item.sku}</span>
                                             </p>
@@ -270,7 +272,7 @@ export default function ReceivingPage() {
                                                 >
                                                     <Plus className="w-4 h-4" />
                                                 </Button>
-                                                <span className="text-sm text-slate-500 uppercase w-12">{item.unit}</span>
+                                                <span className="text-sm text-slate-500 uppercase w-12">{useUnitName(item.unit)}</span>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -394,15 +396,15 @@ export default function ReceivingPage() {
                                     >
                                         <div className="flex items-center justify-between mb-4">
                                             <div>
-                                                <h3 className="text-lg font-bold text-slate-900">{product.name}</h3>
+                                                <h3 className="text-lg font-bold text-slate-900">{useProductName(product)}</h3>
                                                 <p className="text-slate-500 text-sm mt-0.5">
                                                     <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-xs mr-2 font-mono">{product.sku}</span>
-                                                    Current: <span className="text-slate-900 font-semibold">{product.stockLevel} {product.unit}</span>
+                                                    Current: <span className="text-slate-900 font-semibold">{product.stockLevel} {useUnitName(product.unit)}</span>
                                                 </p>
                                             </div>
                                             {draftItem && (
                                                 <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
-                                                    +{draftItem.amount} {draftItem.unit}
+                                                    +{draftItem.amount} {useUnitName(draftItem.unit)}
                                                 </div>
                                             )}
                                         </div>
