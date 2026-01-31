@@ -167,6 +167,18 @@ export function AdminLayoutClient({
                             </h3>
                         </div>
 
+                        <NavLink href="/admin/menu" icon={Menu}>
+                            Menu Manager
+                        </NavLink>
+
+                        <NavLink href="/admin/recipes" icon={BookOpen}>
+                            Recipe Engineer
+                        </NavLink>
+
+                        <NavLink href="/admin/insights/costing" icon={TrendingUp}>
+                            Profitability Insights
+                        </NavLink>
+
                         <NavLink href="/admin/waste" icon={Trash2}>
                             Waste Management
                         </NavLink>
