@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from 'date-fns';
-import { ArrowLeft, FileText, TrendingUp, AlertCircle, CheckCircle, DollarSign, Package } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
 import { useRouter } from '@/i18n/routing';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface SalesReport {
     id: string;
@@ -19,6 +20,11 @@ interface SalesReport {
     status: string;
     branch: { name: string };
     errorDetails?: string;
+    items?: {
+        posString: string;
+        arabicName?: string | null;
+        quantity: number;
+    }[];
 }
 
 export default function SalesReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,8 +72,8 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                     <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 View</h1>
-                    <p className="text-slate-500
+                    <h1 className="text-2xl font-bold text-slate-900">View Report</h1>
+                    <p className="text-slate-500">
                         {report.fileName} • {format(new Date(report.uploadDate), 'MMM dd, yyyy HH:mm')}
                     </p>
                 </div>
@@ -89,24 +95,24 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
             {/* Financial Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Revenue */}
-                <Card className="bg-white border-slate-200
+                <Card className="bg-white border-slate-200">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 Revenue</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-500">Revenue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900
+                        <div className="text-2xl font-bold text-slate-900">
                             JOD {report.totalRevenue.toFixed(2)}
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* COGS */}
-                <Card className="bg-white border-slate-200
+                <Card className="bg-white border-slate-200">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 COGS</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-500">COGS</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900
+                        <div className="text-2xl font-bold text-slate-900">
                             JOD {report.totalCOGS.toFixed(2)}
                         </div>
                         <p className="text-xs text-slate-400 mt-1">Based on Live WAC</p>
@@ -114,9 +120,9 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                 </Card>
 
                 {/* Variance */}
-                <Card className="bg-white border-slate-200
+                <Card className="bg-white border-slate-200">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-500 Variance</CardTitle>
+                        <CardTitle className="text-sm font-medium text-slate-500">Variance</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className={`text-2xl font-bold ${report.variance < -1 ? "text-red-500" : "text-emerald-500"}`}>
@@ -128,7 +134,7 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
             </div>
 
             {/* Details Section */}
-            <Card className="bg-white border-slate-200
+            <Card className="bg-white border-slate-200">
                 <CardHeader>
                     <CardTitle>Report Details</CardTitle>
                     <CardDescription>Metadata and execution status</CardDescription>
@@ -137,23 +143,25 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <p className="text-sm font-medium text-slate-500">Transaction Date used</p>
-                            <p className="text-lg font-semibold text-slate-900
+                            <p className="text-lg font-semibold text-slate-900">
                                 {report.reportDate ? format(new Date(report.reportDate), 'yyyy-MM-dd') : 'N/A'}
                             </p>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Branch</p>
-                            <p className="text-lg font-semibold text-slate-900
+                            <p className="text-lg font-semibold text-slate-900">
+                                {report.branch?.name || 'Unknown'}
+                            </p>
                         </div>
                         {report.errorDetails && (
                             <div className="col-span-2 p-4 bg-red-50 rounded-md">
                                 <p className="text-sm text-red-600 font-medium">Error Details:</p>
-                                <p className="text-sm text-red-700
+                                <p className="text-sm text-red-700">{report.errorDetails}</p>
                             </div>
                         )}
                         <div className="col-span-2">
                             <p className="text-sm font-medium text-slate-500">Note</p>
-                            <p className="text-sm text-slate-600
+                            <p className="text-sm text-slate-600">
                                 This report was processed on {format(new Date(report.uploadDate), 'PP pp')}.
                                 Inventory deductions were applied based on the recipes active at that time.
                             </p>
@@ -161,6 +169,38 @@ export default function SalesReportDetailPage({ params }: { params: Promise<{ id
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Sales Items Table */}
+            {report.items && report.items.length > 0 && (
+                <Card className="bg-white border-slate-200">
+                    <CardHeader>
+                        <CardTitle>Sales Items</CardTitle>
+                        <CardDescription>Breakdown of mapped sales items</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>POS Name</TableHead>
+                                    <TableHead className="text-right">Arabic Name</TableHead>
+                                    <TableHead className="text-right">Quantity</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {report.items.map((item, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell className="font-medium text-slate-700">{item.posString}</TableCell>
+                                        <TableCell className="text-right font-arabic text-emerald-600 font-medium text-lg" dir="rtl">
+                                            {item.arabicName || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-right">{item.quantity}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

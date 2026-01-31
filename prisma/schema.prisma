@@ -726,6 +726,7 @@ model ClockEntry {
 model ProductMapping {
   id            String   @id @default(uuid())
   posString     String   @unique // The exact text from POS (e.g. "Spicy Zinger")
+  arabicName    String?  // Arabic Display Name for Reporting
   
   // Method 1: Direct Deduct (Simple)
   product       Product? @relation(fields: [productId], references: [id])

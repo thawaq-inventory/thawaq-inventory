@@ -211,12 +211,12 @@ export function PaymentConfirmationModal({
                     </div>
 
                     {/* CliQ Instant Transfer Notice */}
-                    <div className="rounded-lg bg-gradient-to-r from-green-50 to-blue-50 p-4 border border-green-200
+                    <div className="rounded-lg bg-gradient-to-r from-green-50 to-blue-50 p-4 border border-green-200">
                         <div className="space-y-2 text-sm">
-                            <p className="text-green-900
+                            <p className="text-green-900">
                                 <strong>⚡ CliQ Instant Transfer:</strong> Funds will be settled <strong>instantly</strong> (24/7) upon approval.
                             </p>
-                            <p className="text-blue-900
+                            <p className="text-blue-900">
                                 <strong>🔒 Maker-Checker:</strong> Payment created in <strong>DRAFT</strong> status. Approve in your Bank al Etihad app to execute.
                             </p>
                         </div>

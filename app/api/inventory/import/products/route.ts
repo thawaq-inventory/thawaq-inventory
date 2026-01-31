@@ -11,6 +11,9 @@ interface ProductImportRow {
     purchase_unit?: string;     // 'Box', 'Kg'
     conversion_factor?: string | number; // 1000, 12, 1
     purchase_price?: string | number;   // 5.00, 2.50
+    display_name_ar?: string;  // Arabic Name
+    arabic_name?: string;      // Variant
+    display_name?: string;     // Variant
 }
 
 export async function POST(req: NextRequest) {
@@ -56,6 +59,14 @@ export async function POST(req: NextRequest) {
             const unit = row.base_unit || 'UNIT';
             const purchaseUnit = row.purchase_unit || 'PACK'; // Default to Pack if missing
 
+            // Handle Arabic Name (Priority: Display_Name_AR > Arabic_Name > null)
+            const arabicName = (
+                row.display_name_ar ||
+                row.arabic_name ||
+                row.display_name ||
+                null
+            )?.toString().trim();
+
             // LOGIC ENGINE: Cost Calculation
             let calculatedCost = 0;
             if (packPrice > 0 && convFactor > 0) {
@@ -68,6 +79,7 @@ export async function POST(req: NextRequest) {
                     where: { sku: finalSku },
                     update: {
                         name: finalName,
+                        arabicName: arabicName || undefined, // Only update if new value provided
                         unit,
                         purchaseUnit,
                         conversionFactor: convFactor,
@@ -77,6 +89,7 @@ export async function POST(req: NextRequest) {
                     },
                     create: {
                         name: finalName,
+                        arabicName,
                         sku: finalSku,
                         unit,
                         purchaseUnit,

@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { format } from 'date-fns';
-import { FileText, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { useRouter } from '@/i18n/routing';
 
 interface SalesReport {
     id: string;
@@ -19,7 +19,6 @@ interface SalesReport {
     status: string;
     branch: { name: string };
 }
-import { useRouter } from '@/i18n/routing';
 
 export default function SalesHistoryPage() {
     const router = useRouter();
@@ -48,8 +47,8 @@ export default function SalesHistoryPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 Analysis History</h1>
-                    <p className="text-slate-500 of all uploaded sales reports and their variance analysis.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Analysis History</h1>
+                    <p className="text-slate-500">List of all uploaded sales reports and their variance analysis.</p>
                 </div>
             </div>
 
@@ -83,10 +82,10 @@ export default function SalesHistoryPage() {
                                 {reports.map((report) => (
                                     <TableRow
                                         key={report.id}
-                                        className="cursor-pointer hover:bg-slate-50
+                                        className="cursor-pointer hover:bg-slate-50"
                                         onClick={() => router.push(`/admin/inventory/history/${report.id}`)}
                                     >
-                                        <TableCell className="font-medium text-slate-900
+                                        <TableCell className="font-medium text-slate-900">
                                             {format(new Date(report.uploadDate), 'MMM dd, HH:mm')}
                                         </TableCell>
                                         <TableCell>{report.fileName}</TableCell>

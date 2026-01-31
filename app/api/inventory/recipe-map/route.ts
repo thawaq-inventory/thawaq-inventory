@@ -46,24 +46,36 @@ export async function POST(req: NextRequest) {
         const posCandidates = ['posstring', 'pos_string', 'itemname', 'posname', 'name', 'item'];
         const skuCandidates = ['inventorysku', 'sku', 'inventory_sku', 'code', 'productid'];
         const qtyCandidates = ['quantity', 'qty', 'amount', 'qnty'];
+        const arCandidates = ['display_name_ar', 'arabicname', 'arabic', 'ar_name', 'name_ar']; // New
 
         // 2. Group Rows by POS String (Recipe Name)
-        const recipeGroups = new Map<string, any[]>();
+        const recipeGroups = new Map<string, any>();
 
         for (const row of data) {
             const rawPos = findValue(row, posCandidates);
             const rawSku = findValue(row, skuCandidates);
             const rawQty = findValue(row, qtyCandidates);
+            const rawAr = findValue(row, arCandidates); // New
 
             const posString = rawPos ? String(rawPos).trim() : null;
             const sku = rawSku ? String(rawSku).trim() : null;
             const quantity = rawQty ? Number(rawQty) : 0;
+            const arabicName = rawAr ? String(rawAr).trim() : null;
 
             if (!posString || !sku || quantity <= 0) continue;
 
-            const group = recipeGroups.get(posString) || [];
-            group.push({ sku, quantity });
-            recipeGroups.set(posString, group);
+            const existing = recipeGroups.get(posString);
+            if (!existing) {
+                recipeGroups.set(posString, {
+                    ingredients: [{ sku, quantity }],
+                    arabicName // Store correct arabic name from first occurrence
+                });
+            } else {
+                existing.ingredients.push({ sku, quantity });
+                if (!existing.arabicName && arabicName) {
+                    existing.arabicName = arabicName; // Update if found later
+                }
+            }
         }
 
         console.log(`Found ${recipeGroups.size} unique Recipes to create/update.`);
@@ -78,7 +90,9 @@ export async function POST(req: NextRequest) {
         const errorDetails: string[] = [];
 
         // 4. Process Each Recipe Group
-        for (const [recipeName, ingredients] of recipeGroups.entries()) {
+        for (const [recipeName, data] of recipeGroups.entries()) {
+            const { ingredients, arabicName } = data;
+
             try {
                 // A. Find or Create Recipe
                 // Start with a clean slate for the recipe logic
@@ -121,10 +135,12 @@ export async function POST(req: NextRequest) {
                     where: { posString: recipeName },
                     create: {
                         posString: recipeName,
+                        arabicName: arabicName, // Save Arabic Name
                         recipeId: recipe.id,
                         quantity: 1, // 1 Serving
                     },
                     update: {
+                        arabicName: arabicName || undefined, // Update logic
                         recipeId: recipe.id,
                         productId: null, // CLEAR direct product link to force Recipe usage
                         quantity: 1
