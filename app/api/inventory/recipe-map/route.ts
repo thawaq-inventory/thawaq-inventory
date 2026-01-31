@@ -2,14 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseUpload } from '@/lib/parsers/file-parser';
 
-// We don't enforce strict interface on input because we are doing fuzzy matching
-// But we can define what we expect to extract
-interface MappedRecipe {
-    posString: string | null;
-    sku: string | null;
-    quantity: number;
-}
-
 // Helper to normalize a key for comparison (remove _ - spaces)
 function normalizeKey(k: string): string {
     return k.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -37,7 +29,7 @@ export async function POST(req: NextRequest) {
 
         if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
-        // 1. Parse File (returns snake_case keys from file-parser)
+        // 1. Parse File
         const { data, errors } = await parseUpload<any>(file);
 
         if (errors.length > 0) {
@@ -48,93 +40,112 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'File is empty' }, { status: 400 });
         }
 
-        // 2. Dry Run Logging
-        // Log the first row keys to help debugging
-        console.log("--- Recipe Import Debug ---");
-        const firstRow = data[0];
-        console.log("Parsed Headers (First Row Keys):", Object.keys(firstRow));
+        console.log("--- Smart Recipe Import Started ---");
 
-        let processedCount = 0;
-        let errorCount = 0;
-        const errorDetails: string[] = [];
-
-        // Candidates for fuzzy matching
-        // file-parser returns snake_case, so 'POS_String' -> 'pos_string'.
-        // user wants to match 'posstring', 'itemname'.
+        // Candidates for fuzzy matching headers
         const posCandidates = ['posstring', 'pos_string', 'itemname', 'posname', 'name', 'item'];
         const skuCandidates = ['inventorysku', 'sku', 'inventory_sku', 'code', 'productid'];
         const qtyCandidates = ['quantity', 'qty', 'amount', 'qnty'];
 
-        console.log("First Row Data (Raw):", JSON.stringify(firstRow));
+        // 2. Group Rows by POS String (Recipe Name)
+        const recipeGroups = new Map<string, any[]>();
 
-        for (let i = 0; i < data.length; i++) {
-            const row = data[i];
-
-            // Extract Values
+        for (const row of data) {
             const rawPos = findValue(row, posCandidates);
             const rawSku = findValue(row, skuCandidates);
             const rawQty = findValue(row, qtyCandidates);
 
             const posString = rawPos ? String(rawPos).trim() : null;
             const sku = rawSku ? String(rawSku).trim() : null;
+            const quantity = rawQty ? Number(rawQty) : 0;
 
-            if (!posString || !sku) {
-                // Only log if it looks like a real row (not fully empty)
-                if (Object.keys(row).length > 0 && (rawPos || rawSku)) {
-                    console.warn(`Skipping partial row ${i}: Missing POS String or SKU. Found: POS=${posString}, SKU=${sku}`);
-                }
-                continue;
-            }
+            if (!posString || !sku || quantity <= 0) continue;
 
-            let quantity = 0;
-            if (rawQty) {
-                quantity = Number(rawQty);
-            }
+            const group = recipeGroups.get(posString) || [];
+            group.push({ sku, quantity });
+            recipeGroups.set(posString, group);
+        }
 
-            if (isNaN(quantity)) {
-                errorCount++;
-                errorDetails.push(`Invalid Quantity for item ${posString}`);
-                continue;
-            }
+        console.log(`Found ${recipeGroups.size} unique Recipes to create/update.`);
 
-            // Find Product
-            const product = await prisma.product.findUnique({
-                where: { sku: sku },
-            });
+        // 3. Pre-fetch Products for Speed
+        const allProducts = await prisma.product.findMany();
+        const productMap = new Map(allProducts.map(p => [String(p.sku || '').trim(), p]));
 
-            if (!product) {
-                errorCount++;
-                errorDetails.push(`Product SKU not found: ${sku} (for ${posString})`);
-                continue;
-            }
+        let processedRecipes = 0;
+        let ingredientsAdded = 0;
+        let errorsCount = 0;
+        const errorDetails: string[] = [];
 
+        // 4. Process Each Recipe Group
+        for (const [recipeName, ingredients] of recipeGroups.entries()) {
             try {
+                // A. Find or Create Recipe
+                // Start with a clean slate for the recipe logic
+                let recipe = await prisma.recipe.findFirst({ where: { name: recipeName } });
+
+                if (!recipe) {
+                    recipe = await prisma.recipe.create({
+                        data: { name: recipeName, servingSize: 1 }
+                    });
+                }
+
+                // B. Clear Existing Ingredients (Full Overwrite for this Import)
+                await prisma.recipeIngredient.deleteMany({
+                    where: { recipeId: recipe.id }
+                });
+
+                // C. Add New Ingredients
+                for (const item of ingredients) {
+                    const product = productMap.get(item.sku);
+
+                    if (!product) {
+                        // Warn but don't crash whole process
+                        // errorDetails.push(`SKU not found: ${item.sku} for recipe ${recipeName}`);
+                        continue;
+                    }
+
+                    await prisma.recipeIngredient.create({
+                        data: {
+                            recipeId: recipe.id,
+                            productId: product.id,
+                            quantity: item.quantity,
+                            unit: product.unit // Default to product unit
+                        }
+                    });
+                    ingredientsAdded++;
+                }
+
+                // D. Update Product Mapping to Point to Recipe (Critical for COGS)
                 await prisma.productMapping.upsert({
-                    where: { posString: posString },
-                    update: {
-                        productId: product.id,
-                        quantity: quantity
-                    },
+                    where: { posString: recipeName },
                     create: {
-                        posString: posString,
-                        productId: product.id,
-                        quantity: quantity
+                        posString: recipeName,
+                        recipeId: recipe.id,
+                        quantity: 1, // 1 Serving
+                    },
+                    update: {
+                        recipeId: recipe.id,
+                        productId: null, // CLEAR direct product link to force Recipe usage
+                        quantity: 1
                     }
                 });
-                processedCount++;
+
+                processedRecipes++;
+
             } catch (e: any) {
-                errorCount++;
-                errorDetails.push(`Database error for ${posString}: ${e.message}`);
-                console.error(`Row ${i} Insert Error:`, e);
+                console.error(`Error processing recipe ${recipeName}:`, e);
+                errorsCount++;
+                errorDetails.push(`Failed to process ${recipeName}: ${e.message}`);
             }
         }
 
         return NextResponse.json({
             success: true,
-            message: `Processed ${processedCount} mappings successfully.`,
-            processedCount,
-            errorCount,
-            errorDetails
+            message: `Smart Import Complete. Updated ${processedRecipes} recipes with ${ingredientsAdded} ingredients.`,
+            processedCount: processedRecipes,
+            errorCount: errorsCount,
+            errorDetails: errorDetails
         });
 
     } catch (error: any) {
