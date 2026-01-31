@@ -125,7 +125,16 @@ export async function POST(req: NextRequest) {
 
         const recipes = await prisma.productMapping.findMany({
             where: { posString: { in: Array.from(allPosStrings) } },
-            include: { product: true }
+            include: {
+                product: true,
+                recipe: {
+                    include: {
+                        ingredients: {
+                            include: { product: true }
+                        }
+                    }
+                }
+            }
         });
         const recipeMap = new Map<string, any>();
         recipes.forEach(r => recipeMap.set(r.posString, r));
@@ -175,10 +184,23 @@ export async function POST(req: NextRequest) {
             for (const item of rowItems) {
                 const processItem = (name: string, qty: number) => {
                     const mapping = recipeMap.get(name);
-                    if (mapping && mapping.product) {
-                        const cost = mapping.product.cost || 0;
-                        if (cost === 0) zeroCostCount++;
-                        rowCOGS += (cost * mapping.quantity * qty);
+                    if (mapping) {
+                        if (mapping.product) {
+                            const cost = mapping.product.cost || 0;
+                            if (cost === 0) zeroCostCount++;
+                            rowCOGS += (cost * mapping.quantity * qty);
+                        } else if (mapping.recipe) {
+                            // Calculate Recipe/Menu Item Cost
+                            // Sum of all ingredient costs
+                            const recipeCost = mapping.recipe.ingredients.reduce((sum: number, ing: any) => {
+                                return sum + (ing.quantity * ing.product.cost);
+                            }, 0);
+
+                            if (recipeCost === 0) zeroCostCount++;
+                            rowCOGS += (recipeCost * qty);
+                        } else {
+                            zeroCostCount++;
+                        }
                     } else {
                         // Missing recipe/product counts as zero cost for awareness
                         zeroCostCount++;
