@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseUpload } from '@/lib/parsers/file-parser';
 import { parseSalesReportLine, parseTabSenseItems, ParsedItem } from '@/lib/parsers/sales-report-parser';
+import { parseTalabatItems, TalabatItem } from '@/lib/parsers/talabat-parser';
 
 // --- FINANCIAL CONSTANTS (FALLBACKS) ---
 // These will be overridden by DB settings if available
@@ -33,6 +34,10 @@ interface SalesRow {
     order_items?: string;
     order_value?: string | number;
 
+    // Talabat-specific fields
+    subtotal?: string | number; // Revenue
+    order_received_at?: string; // Timestamp
+
     [key: string]: any;
 }
 
@@ -50,6 +55,7 @@ export async function POST(req: NextRequest) {
         const file = formData.get('file') as File;
         const action = formData.get('action') as string; // 'ANALYZE', 'POST_ALL', 'POST_REVENUE_ONLY', 'POST_MISSING_COGS'
         const branchId = formData.get('branchId') as string;
+        const channel = (formData.get('channel') as string) || 'IN_HOUSE'; // Default to IN_HOUSE
 
         if (!file) return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
 
@@ -175,10 +181,25 @@ export async function POST(req: NextRequest) {
             let rowCOGS = 0;
             let rowItems: ParsedItem[] = [];
 
-            if (row.items_breakdown) {
-                rowItems = parseTabSenseItems(String(row.items_breakdown));
-            } else if (row.order_items) {
-                rowItems = parseSalesReportLine(String(row.order_items));
+            // Channel-specific parsing
+            if (channel === 'TALABAT') {
+                // Talabat format: use order_items with Talabat parser
+                if (row.order_items) {
+                    const talabatItems = parseTalabatItems(String(row.order_items));
+                    // Convert TalabatItem[] to ParsedItem[] format
+                    rowItems = talabatItems.map(ti => ({
+                        name: ti.name,
+                        qty: ti.qty,
+                        modifiers: [] // Talabat modifiers already stripped
+                    }));
+                }
+            } else {
+                // IN_HOUSE or default: use existing logic
+                if (row.items_breakdown) {
+                    rowItems = parseTabSenseItems(String(row.items_breakdown));
+                } else if (row.order_items) {
+                    rowItems = parseSalesReportLine(String(row.order_items));
+                }
             }
 
             for (const item of rowItems) {
@@ -310,6 +331,7 @@ export async function POST(req: NextRequest) {
                 data: {
                     fileName: (file as File).name || 'Upload',
                     branchId: branchId,
+                    channel: channel as any, // SalesChannel enum
                     totalRevenue: totalCollected,
                     netRevenue: totalNetRevenue,
                     taxAmount: totalTaxLiability,
@@ -376,6 +398,7 @@ export async function POST(req: NextRequest) {
                             posString: item.name,
                             quantity: item.qty,
                             totalSold: 0, // Cannot determine item-level cash from total, audit uses Quantity * MenuPrice
+                            channel: channel as any,
                             salesReportId: salesReport.id,
                             importDate: r.date
                         });
@@ -385,6 +408,7 @@ export async function POST(req: NextRequest) {
                                 posString: mod.name,
                                 quantity: item.qty * mod.qty,
                                 totalSold: 0,
+                                channel: channel as any,
                                 salesReportId: salesReport.id,
                                 importDate: r.date
                             });

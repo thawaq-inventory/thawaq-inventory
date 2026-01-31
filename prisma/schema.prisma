@@ -338,6 +338,14 @@ enum TransferStatus {
   REJECTED
 }
 
+enum SalesChannel {
+  IN_HOUSE    // Default POS
+  TALABAT
+  CAREEM
+  DELIVEROO
+  OTHER
+}
+
 model TransferRequest {
   id              String         @id @default(uuid())
   fromBranchId    String
@@ -781,6 +789,8 @@ model SalesReport {
   status          String   @default("SUCCESS") // SUCCESS, FAILED
   errorDetails    String?
   
+  channel         SalesChannel @default(IN_HOUSE)
+  
   branch          Branch   @relation(fields: [branchId], references: [id])
   branchId        String
   
@@ -797,9 +807,26 @@ model SalesItemLog {
   quantity    Float
   totalSold   Float    // Cash value from POS for this line (Qty * Price)
   
+  channel     SalesChannel @default(IN_HOUSE)
   importDate  DateTime @default(now())
   
   // Optional link to the source report file
   salesReport   SalesReport? @relation(fields: [salesReportId], references: [id])
   salesReportId String?
+}
+
+// Channel-Specific Pricing (Talabat, Careem, etc.)
+model ChannelPricing {
+  id          String       @id @default(uuid())
+  posString   String       // Links to ProductMapping.posString
+  channel     SalesChannel
+  price       Float
+  isActive    Boolean      @default(true)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@unique([posString, channel])
+  @@index([channel])
+  @@index([posString])
 }

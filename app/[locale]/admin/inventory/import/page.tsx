@@ -189,6 +189,7 @@ function SalesReportTab() {
     const [branches, setBranches] = useState<any[]>([]);
     const [loadingBranches, setLoadingBranches] = useState(true);
     const [selectedBranch, setSelectedBranch] = useState("");
+    const [selectedChannel, setSelectedChannel] = useState("IN_HOUSE"); // New: Channel selector
     const [file, setFile] = useState<File | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [executing, setExecuting] = useState(false);
@@ -221,6 +222,7 @@ function SalesReportTab() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("action", "ANALYZE");
+        formData.append("channel", selectedChannel); // Pass channel
 
         try {
             const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
@@ -241,6 +243,7 @@ function SalesReportTab() {
         formData.append("file", file);
         formData.append("action", action);
         formData.append("branchId", selectedBranch);
+        formData.append("channel", selectedChannel); // Pass channel
 
         try {
             const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
@@ -274,6 +277,27 @@ function SalesReportTab() {
                                 {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    <div className="grid w-full max-w-sm items-center gap-1.5">
+                        <Label>Sales Channel</Label>
+                        <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select channel..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="IN_HOUSE">In-House POS</SelectItem>
+                                <SelectItem value="TALABAT">Talabat</SelectItem>
+                                <SelectItem value="CAREEM">Careem</SelectItem>
+                                <SelectItem value="DELIVEROO">Deliveroo</SelectItem>
+                                <SelectItem value="OTHER">Other</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            {selectedChannel === 'TALABAT' && 'Talabat format: "Order Items" column with quantities'}
+                            {selectedChannel === 'IN_HOUSE' && 'TabSense/Standard POS format'}
+                            {selectedChannel === 'CAREEM' && 'Careem delivery format'}
+                        </p>
                     </div>
 
                     <div className="grid w-full max-w-sm items-center gap-1.5">
