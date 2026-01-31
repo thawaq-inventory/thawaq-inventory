@@ -199,7 +199,22 @@ export default function RecipeManager({ initialRecipes, products }: { initialRec
                                     {selectedRecipe.ingredients.map((ing) => (
                                         <TableRow key={ing.id}>
                                             <TableCell className="font-medium">{ing.product.name}</TableCell>
-                                            <TableCell>{ing.quantity}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        type="number"
+                                                        step="0.001"
+                                                        className="w-20 h-8"
+                                                        defaultValue={ing.quantity}
+                                                        onBlur={(e) => {
+                                                            const val = parseFloat(e.target.value);
+                                                            if (!isNaN(val) && val !== ing.quantity) {
+                                                                updateIngredient(ing.id, val).then(() => window.location.reload());
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="text-slate-500 text-xs">{ing.unit}</TableCell>
                                             <TableCell className="text-right">
                                                 {(ing.quantity * ing.product.cost).toFixed(3)}

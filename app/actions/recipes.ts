@@ -31,6 +31,21 @@ export async function createRecipe(data: { name: string; servingSize?: number })
                 servingSize: data.servingSize || 1,
             }
         });
+
+        // AUTO-SYNC: Create/Update ProductMapping to link this POS String (Name) to the Recipe
+        await prisma.productMapping.upsert({
+            where: { posString: data.name },
+            create: {
+                posString: data.name,
+                recipeId: recipe.id,
+                quantity: 1
+            },
+            update: {
+                recipeId: recipe.id,
+                productId: null // Prefer recipe if exists
+            }
+        });
+
         revalidatePath('/admin/recipes');
         return { success: true, recipe };
     } catch (error) {
