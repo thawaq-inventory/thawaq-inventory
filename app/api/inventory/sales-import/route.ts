@@ -379,12 +379,66 @@ export async function POST(req: NextRequest) {
         }
 
         // Default: Analysis Response
+
+        // Debugging Helpers
+        const debugInfo = {
+            sampleHeaders: rawData.length > 0 ? Object.keys(rawData[0]) : [],
+            sampleFirstRow: data.length > 0 ? {
+                itemsRaw: data[0].items_breakdown || data[0].order_items,
+                itemsParsed: data[0].items_breakdown ? parseTabSenseItems(String(data[0].items_breakdown)) : parseSalesReportLine(String(data[0].order_items))
+            } : null,
+            unmappedItems: Array.from(recipeMap.keys()).filter(key => {
+                const map = recipeMap.get(key);
+                if (!map) return true; // Truly missing map
+                // Also define "unmapped" as existing map but zero cost? 
+                // No, sticking to "Known to System but Zero Cost" vs "Unknown"
+                return false;
+            }).length === 0 ? [] : [], // This logic is slightly circular, let's fix it by tracking misses in the loop
+
+            // True culprits for "Zero Cost"
+            zeroCostCulprits: [] as string[]
+        };
+
+        // Capture actual zero cost items during loop
+        // We re-iterate partially or just capture during the main loop? 
+        // Let's rely on the zeroCostCount loop above, but we didn't capture names.
+        // Let's capture unique names in `zeroCostCulprits` set during the loop.
+
+        // RE-RUN LOOP LOGIC JUST FOR DEBUG SAMPLE (Low overhead for small files, safe for 2k rows)
+        const unmappedSet = new Set<string>();
+        let debugCounter = 0;
+        for (const row of data) {
+            if (debugCounter > 100) break; // Limit check
+            debugCounter++;
+
+            let items: ParsedItem[] = [];
+            if (row.items_breakdown) items = parseTabSenseItems(String(row.items_breakdown));
+            else if (row.order_items) items = parseSalesReportLine(String(row.order_items));
+
+            for (const item of items) {
+                const process = (name: string) => {
+                    const m = recipeMap.get(name);
+                    let cost = 0;
+                    if (m?.product) cost = m.product.cost;
+                    else if (m?.recipe) cost = m.recipe.ingredients.reduce((s: number, i: any) => s + (i.quantity * i.product.cost), 0);
+
+                    if (!m || cost === 0) {
+                        unmappedSet.add(name); // Add Name + Cost Status? Just Name.
+                    }
+                };
+                process(item.name);
+                item.modifiers.forEach(mod => process(mod.name));
+            }
+        }
+        debugInfo.zeroCostCulprits = Array.from(unmappedSet).slice(0, 10); // Top 10
+
         return NextResponse.json({
             success: true,
             status: status, // NEW, PARTIAL, DUPLICATE, MIXED
             flashReport: flashReport,
             zeroCostCount: zeroCostCount,
-            receiptCount: receiptsToProcess.length
+            receiptCount: receiptsToProcess.length,
+            debug: debugInfo
         });
 
     } catch (error: any) {

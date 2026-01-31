@@ -5,31 +5,52 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Robust Parser for various formats
-function parseItems(str: string) {
-    if (!str) return [];
+// Robust Parser (Mirrors lib/parsers/sales-report-parser.ts)
+function parseItems(itemsString: string) {
+    if (!itemsString) return [];
 
-    // Strategy 1: "1x Item Name" format (TabSense Standard)
-    if (str.match(/^\d+x/)) {
-        const items: string[] = [];
-        const parts = str.split(/,\s*(?![^(]*\))/);
-        for (const p of parts) {
-            const match = p.trim().match(/^(\d+)x\s+(.+)$/);
+    const results: string[] = [];
+
+    // Strategy 1: Standard "Quantity x Name" format
+    if (itemsString.match(/^\d+x/)) {
+        const parts = itemsString.split(/,\s*(?=\d+x)/);
+        for (const part of parts) {
+            const match = part.trim().match(/^(\d+)x\s+(.+)$/);
             if (match) {
-                // Remove modifiers in parens: "Burger (Cheese)" -> "Burger"
-                items.push(match[2].split('(')[0].trim());
-            } else {
-                items.push(p.trim().split('(')[0].trim());
+                results.push(match[2].split('(')[0].trim());
             }
         }
-        return items;
+        return results;
     }
 
-    // Strategy 2: Comma separated raw strings (Arabic/Legacy)
-    // "عرض برجر, بيبسي"
-    return str.split(',').map(s => {
-        // Clean up and remove parens if any
-        return s.trim().split('(')[0].trim();
-    }).filter(Boolean);
+    // Strategy 2: Comma Separated String (Legacy/Arabic)
+    // Handle newlines too
+    const separators = /[\n,]/;
+    const parts = itemsString.split(separators);
+
+    for (const p of parts) {
+        let clean = p.trim();
+        if (!clean) continue;
+
+        // Handle "Note:" or "Notes:" suffix and strip it
+        const noteIndex = clean.toLowerCase().indexOf('note:');
+        if (noteIndex > -1) {
+            clean = clean.substring(0, noteIndex).trim();
+        }
+        const notesIndex = clean.toLowerCase().indexOf('notes:');
+        if (notesIndex > -1) {
+            clean = clean.substring(0, notesIndex).trim();
+        }
+
+        // Strip parens
+        clean = clean.split('(')[0].trim();
+
+        if (clean) {
+            results.push(clean);
+        }
+    }
+
+    return results;
 }
 
 async function main() {
