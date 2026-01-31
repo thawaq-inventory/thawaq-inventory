@@ -11,14 +11,8 @@ import { generateArabicName } from '../lib/utils/arabic-translation';
 async function main() {
     console.log('🚀 Starting Arabic name population...\n');
 
-    // Fetch all products without Arabic names
+    // Fetch ALL products to regenerate Arabic names with updated mappings
     const products = await prisma.product.findMany({
-        where: {
-            OR: [
-                { arabicName: null },
-                { arabicName: '' }
-            ]
-        },
         orderBy: { sku: 'asc' }
     });
 

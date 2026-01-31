@@ -15,24 +15,53 @@ const SUFFIX_MAP: Record<string, string> = {
     'PITA': 'بيتا',
     'BAGUETTE': 'باغيت',
     'TOAST': 'توست',
+    'BUN': 'برجر',
 
-    // Ingredients
+    // Ingredients - Proteins
     'ZIN': 'زنجر',
     'CHICKEN': 'دجاج',
+    'CHK-BRST': 'صدر دجاج',
     'BEEF': 'لحم',
     'CHEESE': 'جبنة',
+    'BURG-CHK': 'برجر دجاج',
+    'BURG-MEAT': 'برجر لحم',
+    'KABAB': 'كباب',
+    'LIVER': 'كبدة',
+    'LSAN': 'لسان',
+    'STEAK': 'ستيك',
+    'SUJUQ': 'سجق',
+    'TURK': 'تركي',
+
+    // Ingredients - Other
+    'FRIES': 'بطاطس',
+    'CORD': 'كوردون بلو',
+    'HALL': 'حلوم',
+    'KASH': 'قشقوان',
+    'N5A3': 'نخاع',
+    'PAST': 'باستا',
+    'PULL': 'بولد',
+    'ROST': 'روست',
+    'SALA': 'سلامي',
+    'SANY': 'ساني',
+    'T7AL': 'طحال',
+    'TEN': 'تندر',
 
     // Vegetables
     'PICK': 'مخلل',
     'LETTUCE': 'خس',
     'TOMATO': 'طماطم',
     'ONION': 'بصل',
+    'MUSH': 'فطر',
+    'OLIVE': 'زيتون',
 
     // Sauces
     'KET': 'كاتشب',
     'MAYO': 'مايونيز',
     'GARLIC': 'ثوم',
     'HOT': 'حار',
+
+    // Cheese
+    'CHED': 'شيدر',
 };
 
 /**
