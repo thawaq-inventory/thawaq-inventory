@@ -212,7 +212,47 @@ function SalesReportTab() {
             .finally(() => setLoadingBranches(false));
     }, []);
 
-    // ... handleAnalyze / handleExecute ...
+    const handleAnalyze = async () => {
+        if (!file) return;
+        setAnalyzing(true);
+        setAnalysisResult(null);
+        setExecutionResult(null);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("action", "ANALYZE");
+
+        try {
+            const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
+            const data = await res.json();
+            setAnalysisResult(data);
+        } catch (error) {
+            alert("Analysis failed.");
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
+    const handleExecute = async (action: string) => {
+        if (!file || !selectedBranch) return;
+        setExecuting(true);
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("action", action);
+        formData.append("branchId", selectedBranch);
+
+        try {
+            const res = await fetch("/api/inventory/sales-import", { method: "POST", body: formData });
+            const data = await res.json();
+            setExecutionResult(data);
+            setAnalysisResult(null); // Clear analysis to show success
+        } catch (error) {
+            alert("Execution failed.");
+        } finally {
+            setExecuting(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
