@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Save, X, ChefHat, Search, ArrowRight } from "lucide-react";
 import { createRecipe, updateRecipe, deleteRecipe, addIngredient, removeIngredient, updateIngredient } from '@/app/actions/recipes';
 import { ProductCombobox } from "@/components/inventory/ProductCombobox";
+import { BulkImportButton } from '@/components/admin/BulkImportButton';
 
 interface Recipe {
     id: string;
@@ -93,6 +94,10 @@ export default function RecipeManager({ initialRecipes, products }: { initialRec
         }
     };
 
+    const refreshRecipes = () => {
+        window.location.reload();
+    };
+
     return (
         <div className="flex h-[calc(100vh-100px)] gap-6">
             {/* LEFT SIDEBAR: RECIPE LIST */}
@@ -107,6 +112,11 @@ export default function RecipeManager({ initialRecipes, products }: { initialRec
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+                    <BulkImportButton
+                        apiEndpoint="/api/upload/recipe-map"
+                        label="Import"
+                        onSuccess={refreshRecipes}
+                    />
                     <Button size="icon" onClick={() => setIsCreating(true)} variant="outline">
                         <Plus className="h-4 w-4" />
                     </Button>

@@ -15,7 +15,11 @@ export default function ProfitabilityInsights() {
         async function load() {
             setLoading(true);
             const report = await getCostingReport();
-            setData(report);
+
+            // Default Sort: Highest Cost % First
+            const sorted = report.sort((a, b) => b.costPercent - a.costPercent);
+
+            setData(sorted);
             setLoading(false);
         }
         load();

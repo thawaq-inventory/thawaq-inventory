@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Trash2, Save, X, Loader2 } from "lucide-react";
 import { getMenuItems, updateMenuItem, deleteMenuItem } from '@/app/actions/menu';
+import { BulkImportButton } from '@/components/admin/BulkImportButton';
 
 interface MenuItem {
     id: string;
@@ -93,9 +94,18 @@ export default function MenuManager() {
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-slate-900">Menu Manager</h1>
-                <p className="text-slate-600 mt-2">Manage customer-facing menu items and prices.</p>
+            <div className="mb-6 flex justify-between items-start">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900">Menu Manager</h1>
+                    <p className="text-slate-600 mt-2">Manage customer-facing menu items and prices.</p>
+                </div>
+                <div>
+                    <BulkImportButton
+                        apiEndpoint="/api/upload/menu-prices"
+                        label="Import Menu CSV"
+                        onSuccess={loadItems}
+                    />
+                </div>
             </div>
 
             <Card>
