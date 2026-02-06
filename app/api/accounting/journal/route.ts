@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
                             description: `Accrual ${i + 1}/${installments}: ${body.description}`,
                             reference: body.reference ? `${body.reference}-AC${i + 1}` : `ACCRUAL-${i + 1}`,
                             branchId: body.branchId || null,
+                            relatedEntryId: entry.id, // Link to primary entry
                             lines: {
                                 create: [
                                     {

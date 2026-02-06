@@ -234,6 +234,11 @@ model JournalEntry {
   branch      Branch?             @relation(fields: [branchId], references: [id])
   branchId    String?
 
+  // Cascade Delete Support (Self Relation)
+  relatedEntryId  String?
+  relatedEntry    JournalEntry?  @relation("RelatedEntries", fields: [relatedEntryId], references: [id], onDelete: Cascade)
+  childEntries    JournalEntry[] @relation("RelatedEntries")
+
   @@index([branchId])
 }
 

@@ -28,6 +28,7 @@ interface JournalEntry {
     }[];
     expense?: { id: string };
     payrollTransaction?: { id: string };
+    branch?: { name: string };
 }
 
 export default function JournalEntriesPage() {
@@ -262,6 +263,7 @@ export default function JournalEntriesPage() {
                                         </button>
                                     </TableHead>
                                     <TableHead className="w-32">Reference</TableHead>
+                                    <TableHead className="w-32">Branch</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead>Accounts</TableHead>
                                     <TableHead className="text-right w-32">Amount</TableHead>
@@ -280,6 +282,9 @@ export default function JournalEntriesPage() {
                                         </TableCell>
                                         <TableCell className="text-slate-600">
                                             {entry.reference || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-sm text-slate-600">
+                                            {entry.branch ? entry.branch.name : 'Global/HQ'}
                                         </TableCell>
                                         <TableCell className="font-medium text-slate-900">
                                             {entry.description}
