@@ -50,6 +50,9 @@ export default function JournalEntriesPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    const [debugInfo, setDebugInfo] = useState<string>('');
+    const [rawError, setRawError] = useState<string>('');
+
     useEffect(() => {
         // Initial fetch
         fetchEntries();
@@ -76,21 +79,29 @@ export default function JournalEntriesPage() {
             } catch (e) { }
 
             const query = branchId ? `?branchId=${branchId}` : '';
+            const url = `/api/accounting/journal${query}`;
+
+            setDebugInfo(`Fetching: ${url} | BranchCtx: ${branchId || 'None'}`);
             console.log('Fetching Journal with query:', query);
 
-            const response = await fetch(`/api/accounting/journal${query}`, { cache: 'no-store' });
+            const response = await fetch(url, { cache: 'no-store' });
+
+            if (!response.ok) {
+                const txt = await response.text();
+                throw new Error(`Status ${response.status}: ${txt}`);
+            }
+
             const data = await response.json();
 
             console.log('fetched journal entries count:', data.length);
-            // Debug: Report count to UI
-            /* 
-            if (data.length === 0) {
-                 alert('Debug: API returned 0 entries. Query: ' + query);
-            }
-            */
+            setDebugInfo(prev => prev + ` | Count: ${data.length}`);
+
             setEntries(data);
-        } catch (error) {
+            setRawError('');
+        } catch (error: any) {
             console.error('Failed to fetch journal entries:', error);
+            setRawError(error.message || 'Unknown Error');
+            setDebugInfo(prev => prev + ` | Failed`);
         } finally {
             setLoading(false);
         }
@@ -203,6 +214,12 @@ export default function JournalEntriesPage() {
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
+            {/* DEBUG PANEL */}
+            <div className="bg-slate-100 p-2 text-xs font-mono border border-slate-300 rounded text-slate-700">
+                <strong>DEBUG:</strong> {debugInfo}
+                {rawError && <span className="text-red-600 block">ERROR: {rawError}</span>}
+            </div>
+
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Journal Entries</h1>

@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
             ];
         }
 
+        console.log('[API Journal] Fetching with where:', JSON.stringify(where));
+
         const entries = await prisma.journalEntry.findMany({
             where,
             orderBy: { date: 'desc' },
