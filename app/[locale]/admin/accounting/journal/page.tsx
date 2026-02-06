@@ -76,8 +76,18 @@ export default function JournalEntriesPage() {
             } catch (e) { }
 
             const query = branchId ? `?branchId=${branchId}` : '';
-            const response = await fetch(`/api/accounting/journal${query}`);
+            console.log('Fetching Journal with query:', query);
+
+            const response = await fetch(`/api/accounting/journal${query}`, { cache: 'no-store' });
             const data = await response.json();
+
+            console.log('fetched journal entries count:', data.length);
+            // Debug: Report count to UI
+            /* 
+            if (data.length === 0) {
+                 alert('Debug: API returned 0 entries. Query: ' + query);
+            }
+            */
             setEntries(data);
         } catch (error) {
             console.error('Failed to fetch journal entries:', error);
