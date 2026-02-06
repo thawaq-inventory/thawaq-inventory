@@ -6,7 +6,8 @@ export async function GET(request: NextRequest) {
         const searchParams = request.nextUrl.searchParams;
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
-        const branchesParam = searchParams.get('branches'); // "id1,id2"
+        const branchesParam = searchParams.get('branches'); // Legacy support
+        const branchIdParam = searchParams.get('branchId'); // Standardized
 
         // 1. Security & Context (Simulated for now, replace with actual Auth later)
         const { cookies } = await import('next/headers');
@@ -26,10 +27,10 @@ export async function GET(request: NextRequest) {
             // ADMIN/HQ: Can filter by requested branches, or view Global (All)
             if (branchesParam) {
                 branchIdsToFilter = branchesParam.split(',').filter(Boolean);
+            } else if (branchIdParam && branchIdParam !== 'all') {
+                branchIdsToFilter = [branchIdParam];
             }
-            // If empty, we assume "All Branches" (Global View) -> No filter needed or filter by all active? 
-            // Let's filter by NULL (Global entries) AND All Active Branches if we want a true consolidated view.
-            // For this implementation: Empty = No Filter (includes everything)
+            // If empty, we assume "All Branches" -> No filter needed
         }
 
         // 2. Build Query
