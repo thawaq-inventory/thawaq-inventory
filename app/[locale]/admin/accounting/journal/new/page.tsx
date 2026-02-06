@@ -230,6 +230,31 @@ export default function JournalEntryPage() {
                         <CardDescription>Basic information about this journal entry</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Branch Selection */}
+                        <div className="space-y-2 p-3 bg-slate-50/50 rounded-md border border-slate-100">
+                            <Label className="text-slate-600">Branch Context</Label>
+                            <Select
+                                value={selectedBranchId || "global"}
+                                onValueChange={(val) => setSelectedBranchId(val === "global" ? "" : val)}
+                            >
+                                <SelectTrigger className="bg-white">
+                                    <SelectValue placeholder="Select Branch (Optional)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="global">Global (Headquarters)</SelectItem>
+                                    {branches.map((branch) => (
+                                        <SelectItem key={branch.id} value={branch.id}>
+                                            {branch.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Global entries are visible to everyone. Branch entries are specific to that location.
+                            </div>
+                        </div>
+
                         {/* Automated Accrual Section */}
                         <div className="col-span-3 mt-4 pt-4 border-t border-slate-100">
                             <div className="flex items-center gap-2 mb-4">

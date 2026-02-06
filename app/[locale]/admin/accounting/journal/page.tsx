@@ -219,12 +219,6 @@ export default function JournalEntriesPage() {
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
-            {/* DEBUG PANEL */}
-            <div className="bg-slate-100 p-2 text-xs font-mono border border-slate-300 rounded text-slate-700">
-                <strong>DEBUG:</strong> {debugInfo}
-                {rawError && <span className="text-red-600 block">ERROR: {rawError}</span>}
-            </div>
-
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Journal Entries</h1>
