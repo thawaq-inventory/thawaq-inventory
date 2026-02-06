@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { BranchMultiSelect } from "@/components/accounting/BranchMultiSelect";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import {
     Table,
@@ -47,7 +47,8 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(true);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
+    const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
 
     useEffect(() => {
         // Set default dates to current month
@@ -57,18 +58,36 @@ export default function ReportsPage() {
 
         setStartDate(firstDay.toISOString().split('T')[0]);
         setEndDate(lastDay.toISOString().split('T')[0]);
+
+        // Fetch Branches
+        const fetchBranches = async () => {
+            try {
+                const res = await fetch('/api/accounting/branches');
+                if (res.ok) setBranches(await res.json());
+            } catch (e) { console.error(e); }
+        };
+        fetchBranches();
+
+        // Load stored branch
+        const stored = localStorage.getItem('selectedBranch');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                setSelectedBranchId(parsed.id);
+            } catch (e) { }
+        }
     }, []);
 
     useEffect(() => {
         if (startDate && endDate) {
             fetchPL();
         }
-    }, [startDate, endDate, selectedBranches]); // Re-fetch on branch change
+    }, [startDate, endDate, selectedBranchId]);
 
     const fetchPL = async () => {
         setLoading(true);
         try {
-            const branchQuery = selectedBranches.length > 0 ? `&branches=${selectedBranches.join(',')}` : '';
+            const branchQuery = selectedBranchId && selectedBranchId !== 'all' ? `&branchId=${selectedBranchId}` : '';
             const response = await fetch(
                 `/api/accounting/reports/pl?startDate=${startDate}&endDate=${endDate}${branchQuery}`
             );
@@ -117,12 +136,19 @@ export default function ReportsPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Branches (Consolidation)</Label>
-                            <div className="flex">
-                                <BranchMultiSelect
-                                    selectedBranches={selectedBranches}
-                                    onSelectionChange={setSelectedBranches}
-                                />
+                            <Label>Branch Context</Label>
+                            <div className="w-[200px]">
+                                <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Global (Consolidated)</SelectItem>
+                                        {branches.map(b => (
+                                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <Button onClick={fetchPL} disabled={loading}>
