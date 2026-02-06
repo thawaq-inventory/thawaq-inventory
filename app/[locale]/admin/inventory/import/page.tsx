@@ -28,7 +28,6 @@ export default function ImportPage() {
                     <TabsTrigger value="products">Import Products</TabsTrigger>
                     <TabsTrigger value="prices">Price List (POS)</TabsTrigger>
                     <TabsTrigger value="channel-prices">Channel Pricing</TabsTrigger>
-
                     <TabsTrigger value="recipe-map">Recipe Map</TabsTrigger>
                 </TabsList>
 

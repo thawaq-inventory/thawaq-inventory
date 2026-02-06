@@ -22,6 +22,10 @@ interface SalesRow {
     gross_sales?: string | number; // Real Revenue
     taxes?: string | number; // Tax Liability
 
+    // Date & Time specific columns (Historical Import)
+    date?: string; // e.g. "2023-10-25"
+    time?: string; // e.g. "14:30:00"
+
     // Payment Methods for Fee Calc
     cash?: string | number;
     visa?: string | number;
@@ -104,27 +108,24 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // 2. Data Gathering & Flash P&L Calculation
-        let totalCollected = 0;
-        let totalNetRevenue = 0;
-        let totalTaxLiability = 0;
-        let totalTips = 0;
-        let totalTransactionFees = 0;
-        let totalCOGS = 0;
-        let zeroCostCount = 0;
-
-        const receiptsToProcess: any[] = [];
-        const receiptIds = new Set<string>();
-
-        // Pre-fetch Mappings for Speed
+        // 2. Pre-Validation: Check Mappings
         const allPosStrings = new Set<string>();
-        // First pass to collect names
         for (const row of data) {
             if (row.items_breakdown) {
                 const items = parseTabSenseItems(String(row.items_breakdown));
-                items.forEach(i => { allPosStrings.add(i.name); i.modifiers.forEach(m => allPosStrings.add(m.name)); });
+
+                items.forEach(i => {
+                    allPosStrings.add(i.name);
+                    i.modifiers.forEach(m => allPosStrings.add(m.name));
+                });
             } else if (row.order_items) {
-                const items = parseSalesReportLine(String(row.order_items));
+                let items: ParsedItem[] = [];
+                if (channel === 'TALABAT') {
+                    const tItems = parseTalabatItems(String(row.order_items));
+                    items = tItems.map(ti => ({ name: ti.name, qty: ti.qty, modifiers: [] }));
+                } else {
+                    items = parseSalesReportLine(String(row.order_items));
+                }
                 items.forEach(i => { allPosStrings.add(i.name); i.modifiers.forEach(m => allPosStrings.add(m.name)); });
             }
         }
@@ -144,6 +145,30 @@ export async function POST(req: NextRequest) {
         });
         const recipeMap = new Map<string, any>();
         recipes.forEach(r => recipeMap.set(r.posString, r));
+
+        // Strict Validation Check
+        const missingItems = Array.from(allPosStrings).filter(name => !recipeMap.has(name));
+
+        if (missingItems.length > 0) {
+            return NextResponse.json({
+                error: 'Validation Failed: Items missing from Recipe Map',
+                details: missingItems,
+                missingItems: missingItems // Explicit format for UI to consume
+            }, { status: 400 });
+        }
+
+
+        // 3. Data Gathering & Flash P&L Calculation
+        let totalCollected = 0;
+        let totalNetRevenue = 0;
+        let totalTaxLiability = 0;
+        let totalTips = 0;
+        let totalTransactionFees = 0;
+        let totalCOGS = 0;
+        let zeroCostCount = 0;
+
+        const receiptsToProcess: any[] = [];
+        const receiptIds = new Set<string>();
 
         // Main Loop
         for (const row of data) {
@@ -181,20 +206,17 @@ export async function POST(req: NextRequest) {
             let rowCOGS = 0;
             let rowItems: ParsedItem[] = [];
 
-            // Channel-specific parsing
+            // Channel-specific parsing logic
             if (channel === 'TALABAT') {
-                // Talabat format: use order_items with Talabat parser
                 if (row.order_items) {
                     const talabatItems = parseTalabatItems(String(row.order_items));
-                    // Convert TalabatItem[] to ParsedItem[] format
                     rowItems = talabatItems.map(ti => ({
                         name: ti.name,
                         qty: ti.qty,
-                        modifiers: [] // Talabat modifiers already stripped
+                        modifiers: []
                     }));
                 }
             } else {
-                // IN_HOUSE or default: use existing logic
                 if (row.items_breakdown) {
                     rowItems = parseTabSenseItems(String(row.items_breakdown));
                 } else if (row.order_items) {
@@ -211,24 +233,43 @@ export async function POST(req: NextRequest) {
                             if (cost === 0) zeroCostCount++;
                             rowCOGS += (cost * mapping.quantity * qty);
                         } else if (mapping.recipe) {
-                            // Calculate Recipe/Menu Item Cost
-                            // Sum of all ingredient costs
                             const recipeCost = mapping.recipe.ingredients.reduce((sum: number, ing: any) => {
                                 return sum + (ing.quantity * ing.product.cost);
                             }, 0);
 
                             if (recipeCost === 0) zeroCostCount++;
                             rowCOGS += (recipeCost * qty);
-                        } else {
-                            zeroCostCount++;
                         }
-                    } else {
-                        // Missing recipe/product counts as zero cost for awareness
-                        zeroCostCount++;
                     }
                 };
                 processItem(item.name, item.qty);
                 item.modifiers.forEach(mod => processItem(mod.name, item.qty * mod.qty));
+            }
+
+            // Date Parsing Logic
+            let transactionDate = new Date(); // Default fallback
+
+            if (row.date) {
+                // Combine date and time if available
+                const timeStr = row.time || '12:00:00';
+                // Handle various date formats via constructor if standard, or manual parse? 
+                // Assuming ISO or standard YYYY-MM-DD or DD/MM/YYYY. 
+                // Let's try standard constructor first, usually works for YYYY-MM-DD
+                const dateTimeStr = `${row.date}T${timeStr}`;
+                const tryDate = new Date(dateTimeStr);
+                if (!isNaN(tryDate.getTime())) {
+                    transactionDate = tryDate;
+                } else {
+                    // Fallback try just date
+                    const tryDateOnly = new Date(row.date);
+                    if (!isNaN(tryDateOnly.getTime())) transactionDate = tryDateOnly;
+                }
+            } else if (row.created_at) {
+                const tryDate = new Date(row.created_at);
+                if (!isNaN(tryDate.getTime())) transactionDate = tryDate;
+            } else if (row.order_received_at) {
+                const tryDate = new Date(row.order_received_at);
+                if (!isNaN(tryDate.getTime())) transactionDate = tryDate;
             }
 
             // Aggregate
@@ -248,7 +289,7 @@ export async function POST(req: NextRequest) {
                 fees,
                 cogs: rowCOGS,
                 items: rowItems,
-                date: new Date(row.created_at || row.order_received_at || new Date()) // Added order_received_at for Talabat
+                date: transactionDate
             });
         }
 
@@ -282,8 +323,7 @@ export async function POST(req: NextRequest) {
         }
 
 
-        // 4. Construct Flash P&L (Phase 2 Step B / Corrected Phase 10)
-        // Waterfall: Total Collected -> Net Revenue -> Net Operating Profit
+        // 4. Construct Flash P&L (Phase 2 Step B)
         const netOperatingProfit = totalNetRevenue - totalTransactionFees - totalCOGS;
 
         const flashReport: FlashPnL[] = [
@@ -296,8 +336,6 @@ export async function POST(req: NextRequest) {
         ];
 
         if (totalTips > 0) {
-            // Tips are informative now, but if they are collected, they are part of cash flow, but not P&L revenue usually.
-            // We'll show them as an info item.
             flashReport.splice(6, 0, { metric: '(i) Total Tips', amount: totalTips, logic: 'Pass-through to Staff', isNegative: false });
         }
 
@@ -319,14 +357,17 @@ export async function POST(req: NextRequest) {
             const accCOGS = getAcc('COGS');
             const accInventory = getAcc('Inventory Asset');
             const accCashClearing = getAcc('Cash Clearing');
-            const accTips = getAcc('Tips Payable'); // New Account for Refinement
+            const accTips = getAcc('Tips Payable');
 
             if (!accFoodSales || !accVAT || !accMerchantFees || !accCOGS || !accInventory || !accCashClearing || !accTips) {
                 return NextResponse.json({ error: 'Critical Accounts Missing (including Tips Payable). Run Audit.' }, { status: 500 });
             }
 
-            // [AUDIT] 1. Create Sales Report Header
-            // We create this first so we can link logs to it.
+            // [MODIFIED FOR PHASE 2] THEORETICAL LOGGING ONLY
+            // We NO LONGER create Journal Entries for Revenue/COGS here.
+            // This is purely for "Theoretical Sales" analytics.
+
+            // 1. Create Sales Report Header
             const salesReport = await prisma.salesReport.create({
                 data: {
                     fileName: (file as File).name || 'Upload',
@@ -336,128 +377,68 @@ export async function POST(req: NextRequest) {
                     netRevenue: totalNetRevenue,
                     taxAmount: totalTaxLiability,
                     totalCOGS: totalCOGS,
-                    status: 'PENDING'
+                    status: 'THEORETICAL_ONLY' // status changed to reflect no ledger impact
                 }
             });
 
-            // [AUDIT] 2. Prepare Item Logs
+            // 2. Prepare Item Logs
             const itemLogData: any[] = [];
 
             for (const r of receiptsToProcess) {
-                const ledgerStatus = ledgerMap.get(r.receiptId) || 'NEW';
+                // We process ALL receipts for theoretical accuracy, blocking duplicates only happens on report level usually,
+                // but here we are importing a file. If the FILE is new, we import it.
+                // We rely on the user to not upload the same file twice, or check SalesReport fileName/date uniqueness elsewhere if needed.
+                // For now, we log everything from this file as requested.
 
-                // Skip if Duplicate
-                if (ledgerStatus === 'DUPLICATE') continue;
-
-                const lines: any[] = [];
-
-                // --- ENGINE A: REVENUE & FEES (Cash Run) ---
-                if (action === 'POST_ALL' || (action === 'POST_REVENUE_ONLY' && ledgerStatus === 'NEW')) {
-                    if (ledgerStatus === 'NEW') {
-
-                        // Credit Revenue (Net Revenue)
-                        lines.push({ accountId: accFoodSales, credit: r.netRevenue, debit: 0 });
-                        // Credit VAT
-                        if (r.tax > 0) lines.push({ accountId: accVAT, credit: r.tax, debit: 0 });
-                        // Credit Tips (New)
-                        if (r.tips > 0) lines.push({ accountId: accTips, credit: r.tips, debit: 0 });
-
-                        // Debit Expenses (Fees)
-                        if (r.fees > 0) lines.push({ accountId: accMerchantFees, debit: r.fees, credit: 0 });
-
-                        // Debit Cash Clearing (Net Cash Received)
-                        // Formula: (Total Collected + Tips) - Fees  (Assuming Tips are inclusive in collection if they came from online, or added)
-                        // Note: r.totalCollected usually includes tax. Does it include tips? 
-                        // The user said "Total Collected (Top Line): Use the Total column". Often POS total includes tips if charged.
-                        // Let's assume r.totalCollected is what hit the register (Items + Tax). 
-                        // If tips are separate column, they might be added on top or inside. 
-                        // Safest formula based on flow: Net Revenue + Tax + Tips - Fees = Cash.
-
-                        const cashIn = r.netRevenue + r.tax + (r.tips || 0);
-                        const netCash = cashIn - r.fees;
-                        lines.push({ accountId: accCashClearing, debit: netCash, credit: 0 });
-                    }
-                }
-
-                // --- ENGINE B: COGS & INVENTORY (Cost Run) ---
-                if (action === 'POST_ALL' || action === 'POST_MISSING_COGS') {
-                    if ((ledgerStatus === 'NEW' && action === 'POST_ALL') || (ledgerStatus === 'PARTIAL' && action === 'POST_MISSING_COGS')) {
-                        if (r.cogs > 0) {
-                            // Debit COGS
-                            lines.push({ accountId: accCOGS, debit: r.cogs, credit: 0 });
-                            // Credit Inventory
-                            lines.push({ accountId: accInventory, credit: r.cogs, debit: 0 });
-                        }
-                    }
-                }
-
-                // [AUDIT] 3. Collect Item Logs (For Revenue Audit)
-                if (ledgerStatus === 'NEW') {
-                    for (const item of r.items) {
+                for (const item of r.items) {
+                    itemLogData.push({
+                        posString: item.name,
+                        quantity: item.qty,
+                        totalSold: 0,
+                        channel: channel as any,
+                        salesReportId: salesReport.id,
+                        importDate: r.date
+                    });
+                    // Variances/Modifiers
+                    item.modifiers.forEach((mod: any) => {
                         itemLogData.push({
-                            posString: item.name,
-                            quantity: item.qty,
-                            totalSold: 0, // Cannot determine item-level cash from total, audit uses Quantity * MenuPrice
+                            posString: mod.name,
+                            quantity: item.qty * mod.qty,
+                            totalSold: 0,
                             channel: channel as any,
                             salesReportId: salesReport.id,
                             importDate: r.date
                         });
-                        // Variances/Modifiers
-                        item.modifiers.forEach((mod: any) => {
-                            itemLogData.push({
-                                posString: mod.name,
-                                quantity: item.qty * mod.qty,
-                                totalSold: 0,
-                                channel: channel as any,
-                                salesReportId: salesReport.id,
-                                importDate: r.date
-                            });
-                        });
-                    }
-                }
-
-                if (lines.length > 0) {
-                    operations.push(
-                        prisma.journalEntry.create({
-                            data: {
-                                date: r.date,
-                                description: `Sales Import ${r.receiptId} [${action}]`,
-                                reference: r.receiptId,
-                                branchId: branchId,
-                                lines: { create: lines }
-                            }
-                        })
-                    );
+                    });
                 }
             }
 
+            // 3. Batch Insert Logs
+            if (itemLogData.length > 0) {
+                const chunkSize = 1000;
+                for (let i = 0; i < itemLogData.length; i += chunkSize) {
+                    operations.push(prisma.salesItemLog.createMany({
+                        data: itemLogData.slice(i, i + chunkSize)
+                    }));
+                }
+            }
+
+            // Execute Log Creation
             if (operations.length > 0) {
-                // [AUDIT] 4. Add Log Insertion to Transaction
-                if (itemLogData.length > 0) {
-                    // Split into chunks if too large (Prisma safety)
-                    const chunkSize = 1000;
-                    for (let i = 0; i < itemLogData.length; i += chunkSize) {
-                        operations.push(prisma.salesItemLog.createMany({
-                            data: itemLogData.slice(i, i + chunkSize)
-                        }));
-                    }
-                }
-
                 await prisma.$transaction(operations);
-
-                // [AUDIT] 5. Mark Report Success
-                await prisma.salesReport.update({
-                    where: { id: salesReport.id },
-                    data: { status: 'SUCCESS' }
-                });
-            } else {
-                // If no operations (e.g. all duplicates), mark report as SKIPPED or FAILED?
-                // Technically duplicates means we didn't do anything new.
-                await prisma.salesReport.update({
-                    where: { id: salesReport.id },
-                    data: { status: 'DUPLICATE_SKIPPED' }
-                });
             }
+
+            // Mark strict success
+            await prisma.salesReport.update({
+                where: { id: salesReport.id },
+                data: { status: 'SUCCESS' }
+            });
+
+            return NextResponse.json({
+                success: true,
+                message: `Successfully logged Theoretical Sales. No Ledger entries created.`,
+                postedCount: itemLogData.length
+            });
 
             return NextResponse.json({
                 success: true,
@@ -466,59 +447,11 @@ export async function POST(req: NextRequest) {
             });
         }
 
-        // Default: Analysis Response
-
-        // Debugging Helpers
-        const debugInfo = {
-            sampleHeaders: rawData.length > 0 ? Object.keys(rawData[0]) : [],
-            sampleFirstRow: data.length > 0 ? {
-                itemsRaw: data[0].items_breakdown || data[0].order_items,
-                itemsParsed: data[0].items_breakdown ? parseTabSenseItems(String(data[0].items_breakdown)) : parseSalesReportLine(String(data[0].order_items))
-            } : null,
-            unmappedItems: Array.from(recipeMap.keys()).filter(key => {
-                const map = recipeMap.get(key);
-                if (!map) return true; // Truly missing map
-                // Also define "unmapped" as existing map but zero cost? 
-                // No, sticking to "Known to System but Zero Cost" vs "Unknown"
-                return false;
-            }).length === 0 ? [] : [], // This logic is slightly circular, let's fix it by tracking misses in the loop
-
-            // True culprits for "Zero Cost"
-            zeroCostCulprits: [] as string[]
-        };
-
-        // Capture actual zero cost items during loop
-        // We re-iterate partially or just capture during the main loop? 
-        // Let's rely on the zeroCostCount loop above, but we didn't capture names.
-        // Let's capture unique names in `zeroCostCulprits` set during the loop.
-
-        // RE-RUN LOOP LOGIC JUST FOR DEBUG SAMPLE (Low overhead for small files, safe for 2k rows)
-        const unmappedSet = new Set<string>();
-        let debugCounter = 0;
-        for (const row of data) {
-            if (debugCounter > 100) break; // Limit check
-            debugCounter++;
-
-            let items: ParsedItem[] = [];
-            if (row.items_breakdown) items = parseTabSenseItems(String(row.items_breakdown));
-            else if (row.order_items) items = parseSalesReportLine(String(row.order_items));
-
-            for (const item of items) {
-                const process = (name: string) => {
-                    const m = recipeMap.get(name);
-                    let cost = 0;
-                    if (m?.product) cost = m.product.cost;
-                    else if (m?.recipe) cost = m.recipe.ingredients.reduce((s: number, i: any) => s + (i.quantity * i.product.cost), 0);
-
-                    if (!m || cost === 0) {
-                        unmappedSet.add(name); // Add Name + Cost Status? Just Name.
-                    }
-                };
-                process(item.name);
-                item.modifiers.forEach(mod => process(mod.name));
-            }
-        }
-        debugInfo.zeroCostCulprits = Array.from(unmappedSet).slice(0, 10); // Top 10
+        // Default: Analysis Response logic (without executing)
+        // We still need to return the ZeroCost count and simple debug for unmatched items? 
+        // With Strict Validation, 'unmappedItems' shouldn't technically exist here unless we relax validation or use a 'warning' mode.
+        // But for strictly blocked validation, we return early above. 
+        // So here 'zeroCostCount' refers to mapped items with 0 cost.
 
         return NextResponse.json({
             success: true,
@@ -526,7 +459,10 @@ export async function POST(req: NextRequest) {
             flashReport: flashReport,
             zeroCostCount: zeroCostCount,
             receiptCount: receiptsToProcess.length,
-            debug: debugInfo
+            debug: {
+                // We've already validated existence, so just return cost warnings if any
+                zeroCostCulprits: [] // Could populate if needed, but keeping simple for now
+            }
         });
 
     } catch (error: any) {

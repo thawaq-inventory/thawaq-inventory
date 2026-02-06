@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ interface Log {
     id: string;
     product: {
         name: string;
+        arabicName?: string | null;
         sku: string;
         unit: string;
     };
@@ -25,6 +26,7 @@ interface Log {
 
 export default function InventoryHistory() {
     const t = useTranslations();
+    const locale = useLocale();
     const [logs, setLogs] = useState<Log[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -132,7 +134,11 @@ export default function InventoryHistory() {
                                             {format(new Date(log.createdAt), 'MMM d, yyyy HH:mm')}
                                         </TableCell>
                                         <TableCell className="py-4">
-                                            <div className="font-medium text-slate-900">{log.product.name}</div>
+                                            <div className="font-medium text-slate-900">
+                                                {locale === 'ar' && log.product.arabicName
+                                                    ? log.product.arabicName
+                                                    : log.product.name}
+                                            </div>
                                             <div className="text-xs text-slate-500 font-mono">{log.product.sku}</div>
                                         </TableCell>
                                         <TableCell className="py-4">

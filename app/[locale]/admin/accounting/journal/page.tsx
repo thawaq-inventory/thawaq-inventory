@@ -50,16 +50,32 @@ export default function JournalEntriesPage() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
+        // Initial fetch
         fetchEntries();
-    }, []);
 
-    useEffect(() => {
-        filterAndSortEntries();
-    }, [entries, searchTerm, showAll, sortOrder]);
+        // Listen for branch changes
+        const handleBranchChange = () => fetchEntries();
+        window.addEventListener('branch-change', handleBranchChange);
+
+        return () => {
+            window.removeEventListener('branch-change', handleBranchChange);
+        };
+    }, []);
 
     const fetchEntries = async () => {
         try {
-            const response = await fetch('/api/accounting/journal');
+            setLoading(true);
+            let branchId = '';
+            try {
+                const stored = localStorage.getItem('selectedBranch');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    branchId = parsed.id;
+                }
+            } catch (e) { }
+
+            const query = branchId ? `?branchId=${branchId}` : '';
+            const response = await fetch(`/api/accounting/journal${query}`);
             const data = await response.json();
             setEntries(data);
         } catch (error) {
@@ -267,6 +283,11 @@ export default function JournalEntriesPage() {
                                         </TableCell>
                                         <TableCell className="font-medium text-slate-900">
                                             {entry.description}
+                                            {new Date(entry.date) > new Date() && (
+                                                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                                                    Scheduled
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-sm text-slate-600">
                                             {entry.lines.slice(0, 2).map((line, idx) => (

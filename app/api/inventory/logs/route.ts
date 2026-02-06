@@ -7,14 +7,20 @@ export async function GET(request: Request) {
         const search = searchParams.get('search') || '';
         const type = searchParams.get('type') || 'ALL';
         const limit = parseInt(searchParams.get('limit') || '50');
+        const branchIds = searchParams.get('branchIds');
 
         const where: any = {};
+
+        if (branchIds && branchIds !== 'all') {
+            const ids = branchIds.split(',');
+            where.branchId = { in: ids };
+        }
 
         if (search) {
             where.product = {
                 OR: [
-                    { name: { contains: search } },
-                    { sku: { contains: search } }
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { sku: { contains: search, mode: 'insensitive' } }
                 ]
             };
         }
@@ -26,8 +32,19 @@ export async function GET(request: Request) {
         const logs = await prisma.inventoryLog.findMany({
             where,
             include: {
-                product: true,
-                user: true
+                product: {
+                    select: {
+                        name: true,
+                        arabicName: true,
+                        sku: true,
+                        unit: true
+                    }
+                },
+                user: {
+                    select: {
+                        name: true
+                    }
+                }
             },
             orderBy: {
                 createdAt: 'desc'

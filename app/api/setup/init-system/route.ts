@@ -60,14 +60,64 @@ export async function GET() {
             }
         });
 
+        // 3. Create Default Chart of Accounts
+        const defaultAccounts = [
+            // Assets
+            { code: '1010', name: 'Cash on Hand', type: 'ASSET' },
+            { code: '1015', name: 'Petty Cash', type: 'ASSET' },
+            { code: '1020', name: 'Bank Account - Arab Bank', type: 'ASSET' },
+            { code: '1200', name: 'Inventory Asset', type: 'ASSET' },
+
+            // Liabilities
+            { code: '2010', name: 'Accounts Payable', type: 'LIABILITY' },
+            { code: '2020', name: 'VAT Payable', type: 'LIABILITY' },
+
+            // Equity
+            { code: '3010', name: 'Retained Earnings', type: 'EQUITY' },
+            { code: '3020', name: 'Opening Balance Equity', type: 'EQUITY' },
+
+            // Revenue
+            { code: '4010', name: 'Sales Revenue', type: 'REVENUE' },
+            { code: '4020', name: 'Service Revenue', type: 'REVENUE' },
+
+            // Expenses (COGS)
+            { code: '5010', name: 'Cost of Goods Sold (COGS)', type: 'EXPENSE' },
+            { code: '5020', name: 'Wastage Expense', type: 'EXPENSE' },
+            { code: '5030', name: 'Inventory Shrinkage', type: 'EXPENSE' },
+
+            // Operating Expenses
+            { code: '6010', name: 'Rent Expense', type: 'EXPENSE' },
+            { code: '6020', name: 'Salaries & Wages', type: 'EXPENSE' },
+            { code: '6030', name: 'Utilities', type: 'EXPENSE' },
+            { code: '6040', name: 'Maintenance', type: 'EXPENSE' },
+            { code: '6050', name: 'Marketing', type: 'EXPENSE' },
+            { code: '6300', name: 'Merchant Fees', type: 'EXPENSE' } // Important for Sales Import
+        ];
+
+        let createdAccounts = 0;
+        for (const acc of defaultAccounts) {
+            const exists = await prisma.account.findFirst({ where: { code: acc.code } });
+            if (!exists) {
+                await prisma.account.create({
+                    data: {
+                        code: acc.code,
+                        name: acc.name,
+                        type: acc.type as any // Cast to enum
+                    }
+                });
+                createdAccounts++;
+            }
+        }
+
         return NextResponse.json({
             status: 'SUCCESS',
-            message: 'System Initialized. You can now login.',
+            message: `System Initialized. Created ${createdAccounts} new accounts.`,
             credentials: {
                 username: adminEmail,
                 password: 'admin'
             },
-            branches: branches.map(b => b.name)
+            branches: branches.map(b => b.name),
+            accountsCreated: createdAccounts
         });
 
     } catch (error: any) {

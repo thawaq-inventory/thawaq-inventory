@@ -17,6 +17,12 @@ interface Account {
     type: string;
 }
 
+interface Branch {
+    id: string;
+    name: string;
+    code: string;
+}
+
 interface JournalLine {
     accountId: string;
     debit: string;
@@ -26,6 +32,9 @@ interface JournalLine {
 export default function JournalEntryPage() {
     const router = useRouter();
     const [accounts, setAccounts] = useState<Account[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedBranchId, setSelectedBranchId] = useState<string>('');
+
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [description, setDescription] = useState('');
     const [reference, setReference] = useState('');
@@ -35,14 +44,64 @@ export default function JournalEntryPage() {
     ]);
     const [loading, setLoading] = useState(false);
 
+    // Accrual State
+    const [isAccrual, setIsAccrual] = useState(false);
+    const [installments, setInstallments] = useState(12);
+    const [firstDate, setFirstDate] = useState('');
+    const [accrualDebitAccount, setAccrualDebitAccount] = useState('');
+    const [accrualCreditAccount, setAccrualCreditAccount] = useState('');
+
     useEffect(() => {
-        fetchAccounts();
+        const loadData = async () => {
+            setLoading(true);
+            try {
+                await Promise.all([
+                    (async () => {
+                        try {
+                            const res = await fetch('/api/accounting/accounts', { cache: 'no-store' });
+                            if (res.ok) {
+                                const data = await res.json();
+                                setAccounts(data);
+                            }
+                        } catch (e) {
+                            console.error("Failed to fetch accounts", e);
+                        }
+                    })(),
+                    fetchBranches()
+                ]);
+
+                try {
+                    const stored = localStorage.getItem('selectedBranch');
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        setSelectedBranchId(parsed.id);
+                    }
+                } catch (e) { }
+            } catch (error) {
+                console.error('Failed to load data', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
     }, []);
 
     const fetchAccounts = async () => {
         const response = await fetch('/api/accounting/accounts');
         const data = await response.json();
         setAccounts(data);
+    };
+
+    const fetchBranches = async () => {
+        try {
+            const response = await fetch('/api/accounting/branches');
+            if (response.ok) {
+                const data = await response.json();
+                setBranches(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch branches');
+        }
     };
 
     const addLine = () => {
@@ -99,23 +158,24 @@ export default function JournalEntryPage() {
                     date,
                     description,
                     reference,
+                    branchId: selectedBranchId || null,
                     lines: lines.map(line => ({
                         accountId: line.accountId,
                         debit: parseFloat(line.debit),
                         credit: parseFloat(line.credit)
-                    }))
+                    })),
+                    accrual: isAccrual ? {
+                        installments,
+                        firstDate,
+                        debitAccountId: accrualDebitAccount,
+                        creditAccountId: accrualCreditAccount
+                    } : null
                 }),
             });
 
             if (response.ok) {
                 alert('Journal entry recorded successfully!');
-                // Reset form
-                setDescription('');
-                setReference('');
-                setLines([
-                    { accountId: '', debit: '0', credit: '0' },
-                    { accountId: '', debit: '0', credit: '0' }
-                ]);
+                router.push('/admin/accounting/journal');
             } else {
                 const data = await response.json();
                 alert(data.error || 'Failed to create journal entry');
@@ -170,33 +230,78 @@ export default function JournalEntryPage() {
                         <CardDescription>Basic information about this journal entry</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label>Date *</Label>
-                                <Input
-                                    type="date"
-                                    value={date}
-                                    onChange={(e) => setDate(e.target.value)}
-                                    required
+                        {/* Automated Accrual Section */}
+                        <div className="col-span-3 mt-4 pt-4 border-t border-slate-100">
+                            <div className="flex items-center gap-2 mb-4">
+                                <input
+                                    type="checkbox"
+                                    id="isAccrual"
+                                    className="h-4 w-4 text-blue-600 rounded border-slate-300 focus:ring-blue-600"
+                                    checked={isAccrual}
+                                    onChange={(e) => setIsAccrual(e.target.checked)}
                                 />
+                                <Label htmlFor="isAccrual" className="text-slate-900 font-medium cursor-pointer">
+                                    Distribute as Monthly Accrual / Amortization
+                                </Label>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Reference</Label>
-                                <Input
-                                    value={reference}
-                                    onChange={(e) => setReference(e.target.value)}
-                                    placeholder="INV-001, etc."
-                                />
-                            </div>
-
-                            <div className="space-y-2 col-span-1">
-                                <Label>Status</Label>
-                                <div className={`px-3 py-2 rounded-md text-sm font-medium ${balanced ? 'status-balanced' : 'status-unbalanced'
-                                    }`}>
-                                    {balanced ? '✓ Balanced' : '✗ Not Balanced'}
+                            {isAccrual && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                    <div className="space-y-2">
+                                        <Label>Installments (Months)</Label>
+                                        <Input
+                                            type="number"
+                                            min="2"
+                                            max="60"
+                                            value={installments}
+                                            onChange={(e) => setInstallments(parseInt(e.target.value) || 2)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>First Distribution Date</Label>
+                                        <Input
+                                            type="date"
+                                            value={firstDate}
+                                            onChange={(e) => setFirstDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Monthly Debit Account</Label>
+                                        <Select value={accrualDebitAccount} onValueChange={setAccrualDebitAccount}>
+                                            <SelectTrigger className="bg-white">
+                                                <SelectValue placeholder="Select Account" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {accounts.map(acc => (
+                                                    <SelectItem key={acc.id} value={acc.id}>
+                                                        {acc.code} - {acc.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Monthly Credit Account</Label>
+                                        <Select value={accrualCreditAccount} onValueChange={setAccrualCreditAccount}>
+                                            <SelectTrigger className="bg-white">
+                                                <SelectValue placeholder="Select Account" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {accounts.map(acc => (
+                                                    <SelectItem key={acc.id} value={acc.id}>
+                                                        {acc.code} - {acc.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="col-span-full text-xs text-slate-500">
+                                        <p>
+                                            This will immediately create the entry above, plus <strong>{installments} future entries</strong> starting {firstDate}.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         <div className="space-y-2">
