@@ -57,6 +57,38 @@ export default function BalanceSheetPage() {
         return new Intl.NumberFormat('en-JO', { style: 'currency', currency: 'JOD' }).format(amount);
     };
 
+    const handleExport = () => {
+        if (!data) return;
+
+        const rows = [
+            ['Balance Sheet', `As of ${new Date().toLocaleDateString()}`],
+            [''],
+            ['Assets'],
+            ['Account', 'Balance'],
+            ...data.assets.map((a: any) => [a.name, a.balance]),
+            ['Total Assets', data.meta.totalAssets],
+            [''],
+            ['Liabilities'],
+            ...data.liabilities.map((a: any) => [a.name, a.balance]),
+            ['Total Liabilities', data.meta.totalLiabilities],
+            [''],
+            ['Equity'],
+            ...data.equity.map((a: any) => [a.name, a.balance]),
+            ['Total Equity', data.meta.totalEquity],
+        ];
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `balance_sheet_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (loading || !data) {
         return <div className="p-8 text-center">Loading Report...</div>;
     }
@@ -82,7 +114,7 @@ export default function BalanceSheetPage() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={handleExport}>
                         <Download className="w-4 h-4 mr-2" /> Export
                     </Button>
                 </div>

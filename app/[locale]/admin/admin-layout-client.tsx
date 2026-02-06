@@ -238,16 +238,30 @@ export function AdminLayoutClient({
                             {t('journalEntries')}
                         </NavLink>
 
-                        <NavLink href="/admin/accounting/reports" icon={TrendingUp}>
-                            {t('plReports')}
+                        <NavLink href="/admin/expenses" icon={Receipt}>
+                            Expenses
                         </NavLink>
+
+                        {/* Reports Subsection */}
+                        <div className="px-3 py-2 mt-2 mb-1">
+                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reports</h4>
+                        </div>
+
+                        <NavLink href="/admin/accounting/reports" icon={TrendingUp}>
+                            Profit & Loss
+                        </NavLink>
+
+                        <NavLink href="/admin/accounting/reports/balance-sheet" icon={BarChart3}>
+                            Balance Sheet
+                        </NavLink>
+
+                        {/* Setup Subsection */}
+                        <div className="px-3 py-2 mt-2 mb-1">
+                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Setup</h4>
+                        </div>
 
                         <NavLink href="/admin/accounting/accounts" icon={BookOpen}>
                             {t('chartOfAccounts')}
-                        </NavLink>
-
-                        <NavLink href="/admin/expenses" icon={Receipt}>
-                            Expenses
                         </NavLink>
 
                         <NavLink href="/admin/accounting/settings" icon={Settings}>

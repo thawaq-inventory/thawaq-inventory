@@ -198,13 +198,19 @@ export default function JournalEntriesPage() {
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Journal Entries</h1>
                     <p className="text-slate-500 mt-1">View and manage accounting journal entries</p>
                 </div>
-                <Button
-                    onClick={() => router.push('/admin/accounting/journal/new')}
-                    className="btn-primary-blue"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create New Entry
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={fetchEntries} disabled={loading}>
+                        <RefreshCcw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                    <Button
+                        onClick={() => router.push('/admin/accounting/journal/new')}
+                        className="btn-primary-blue"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create New Entry
+                    </Button>
+                </div>
             </div>
 
             <Card className="card-accent-blue">
