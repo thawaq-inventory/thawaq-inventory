@@ -66,6 +66,11 @@ export default function JournalEntriesPage() {
         };
     }, []);
 
+    // Effect to filter/sort when dependencies change
+    useEffect(() => {
+        filterAndSortEntries();
+    }, [entries, searchTerm, sortOrder, showAll]);
+
     const fetchEntries = async () => {
         try {
             setLoading(true);
