@@ -15,8 +15,18 @@ export async function GET(request: NextRequest) {
             }
         };
 
-        if (branchId) {
+        if (branchId && branchId !== 'all') {
             where.branchId = branchId;
+            // Ideally Balance Sheet should be STRICT per branch? 
+            // actually, usually you want to see YOUR Assets + allocated HQ assets?
+            // For now, let's keep it strict for Balance Sheet to allow specific filtering,
+            // UNLESS the user wants to see "everything involving this branch".
+            // Given the context of "Global entries missing", let's fix it here too just in case.
+            where.OR = [
+                { branchId: branchId },
+                { branchId: null }
+            ];
+            delete where.branchId; // Start fresh with OR
         }
 
         // 2. Fetch All Lines mapped to Accounts

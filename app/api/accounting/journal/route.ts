@@ -8,8 +8,11 @@ export async function GET(request: NextRequest) {
         const branchId = searchParams.get('branchId');
 
         const where: any = {};
-        if (branchId) {
-            where.branchId = branchId;
+        if (branchId && branchId !== 'all') {
+            where.OR = [
+                { branchId: branchId },
+                { branchId: null } // Always show Global/HQ entries
+            ];
         }
 
         const entries = await prisma.journalEntry.findMany({
