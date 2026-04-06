@@ -5,7 +5,6 @@ import { useRouter } from '@/i18n/routing';
 import { Loader2, ArrowLeft, Check, X, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Link } from '@/i18n/routing';
 import { Input } from '@/components/ui/input';
 import {
@@ -171,9 +170,9 @@ export default function RequestDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {error && (
-                <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
+                <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+                    {error}
+                </div>
             )}
 
             <Card>

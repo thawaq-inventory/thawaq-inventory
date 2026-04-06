@@ -6,19 +6,26 @@ import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, Eye, CheckCircle, Clock } from 'lucide-react';
-import { useBranch } from '@/components/BranchProvider';
 
 export default function StockCountRequestsPage() {
-    const { userBranchId } = useBranch();
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchRequests();
-    }, [userBranchId]);
+        // Read branchIds from localStorage
+        let userBranchId = 'all';
+        try {
+            const saved = localStorage.getItem('selectedBranches');
+            if (saved) {
+                const branches = JSON.parse(saved);
+                userBranchId = branches.join(',');
+            }
+        } catch(e) {}
+        fetchRequests(userBranchId);
+    }, []);
 
-    const fetchRequests = async () => {
+    const fetchRequests = async (userBranchId: string) => {
         setLoading(true);
         setError(null);
         try {
