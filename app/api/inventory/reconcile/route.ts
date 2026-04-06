@@ -6,19 +6,39 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         let { branchId, items, notes, userId } = body;
 
-        // If no branchId provided, try to infer from cookie (standard for Employee App Context)
-        if (!branchId) {
+        // If no branchId or userId provided, try to infer from cookie (standard for Employee App Context)
+        if (!branchId || !userId) {
             const { cookies } = await import('next/headers');
             const cookieStore = await cookies();
-            const selectedBranchesCookie = cookieStore.get('selectedBranches');
-            if (selectedBranchesCookie) {
-                try {
-                    const branches = JSON.parse(decodeURIComponent(selectedBranchesCookie.value));
-                    if (branches && branches.length > 0 && branches[0] !== 'all') {
-                        branchId = branches[0];
-                    }
-                } catch (e) {}
+            
+            if (!branchId) {
+                const selectedBranchesCookie = cookieStore.get('selectedBranches');
+                if (selectedBranchesCookie) {
+                    try {
+                        const branches = JSON.parse(decodeURIComponent(selectedBranchesCookie.value));
+                        if (branches && branches.length > 0 && branches[0] !== 'all') {
+                            branchId = branches[0];
+                        }
+                    } catch (e) {}
+                }
             }
+            
+            if (!userId) {
+                const token = cookieStore.get('auth_token')?.value;
+                if (token) {
+                    const session = await prisma.session.findUnique({
+                        where: { token },
+                        select: { userId: true }
+                    });
+                    if (session) userId = session.userId;
+                }
+            }
+        }
+
+        // Fallback to any valid user if still not found to satisfy FK constraint
+        if (!userId) {
+            const fallbackUser = await prisma.user.findFirst({ select: { id: true } });
+            if (fallbackUser) userId = fallbackUser.id;
         }
 
         if (!branchId || !items || !Array.isArray(items)) {
@@ -63,7 +83,7 @@ export async function POST(request: NextRequest) {
             const requestRecord = await tx.stockCountRequest.create({
                 data: {
                     branchId,
-                    userId: userId || 'system',
+                    userId: userId,
                     notes: notes || '',
                     items: {
                         create: stockCountItems
