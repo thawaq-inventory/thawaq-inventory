@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
         // We will execute this in a transaction to ensure integrity
         const result = await prisma.$transaction(async (tx) => {
-            const results = [];
+            const stockCountItems = [];
 
             for (const item of items) {
                 const { productId, actualQuantity } = item;
@@ -35,137 +35,28 @@ export async function POST(request: NextRequest) {
                 const systemQuantity = currentLevel ? currentLevel.quantityOnHand : 0;
                 const variance = actualQuantity - systemQuantity;
 
-                // If no variance, skip update (or maybe log confirm?)
-                // Let's skip update if 0 variance to save DB space, 
-                // BUT user might want a record that they counted.
-                // For now, only record if variance exists OR if it's a first-time set (system 0, actual > 0).
-
-                if (variance === 0 && currentLevel) {
-                    continue;
-                }
-
-                // 2. Update Inventory Level
-                await tx.inventoryLevel.upsert({
-                    where: {
-                        productId_branchId: {
-                            productId,
-                            branchId
-                        }
-                    },
-                    update: {
-                        quantityOnHand: actualQuantity
-                    },
-                    create: {
-                        productId,
-                        branchId,
-                        quantityOnHand: actualQuantity
-                    }
+                stockCountItems.push({
+                    productId,
+                    systemQuantity,
+                    countedQuantity: actualQuantity,
+                    variance
                 });
-
-                // 3. Log Transaction
-                // Reason: ADJUSTMENT
-                // If negative variance: Missing stock (Shrinkage)
-                // If positive variance: Found stock (Overage)
-
-                await tx.inventoryTransaction.create({
-                    data: {
-                        type: 'ADJUSTMENT',
-                        productId,
-                        // Schema: sourceBranchId, destBranchId. 
-                        // For Adjustment, usually we set the branch as source? Or null?
-                        // Let's use `sourceBranchId` for the branch where adjustment happened.
-                        sourceBranchId: branchId,
-                        // quantity: Math.abs(variance), // Removed duplicate
-                        // Wait, if we use `InventoryLog` (legacy but still used in logic), we record signed change.
-                        // `InventoryTransaction` is the new one.
-                        // Let's check Schema regarding `InventoryTransaction` quantity. 
-                        // Usually unsigned magnitude + Type tells direction? 
-                        // OR signed? 
-                        // Let's use signed quantity for simplicity if the type allows interpretation, 
-                        // BUT standard is often Positive Qty with specific Type.
-                        // Let's use Positive Qty and notes to describe direction.
-                        // ACTUALLY, checking schema: `quantity Float`.
-                        // Let's look at `type`. 
-                        // If type is ADJUSTMENT, we need to know if it was + or -.
-                        // I will store the Signed Variance in Quantity? 
-                        // Or should I stick to standard "Movement" logic? 
-                        // Let's store Signed Variance in `notes` or assume "ADJUSTMENT" with +/- quantity?
-                        // Let's check how `InventoryLog` does it: `changeAmount` (signed).
-                        // Let's stick to strict Signed Quantity for `InventoryTransaction` too if not constrained.
-                        // If I can't, I'll use `quantity` as abs and reliance on type logic is ambiguous for Adjustment (could be + or -).
-                        // DECISION: Using Signed Quantity for Adjustment makes most sense for "Correction".
-                        quantity: variance,
-                        userId: userId || 'system',
-                        notes: `Stock Take Variance: ${variance > 0 ? '+' : ''}${variance}. ${notes || ''}`
-                    }
-                });
-
-                // Keep Legacy Log for safety
-                await tx.inventoryLog.create({
-                    data: {
-                        productId,
-                        branchId,
-                        changeAmount: variance,
-                        reason: 'STOCK_TAKE',
-                        userId: userId || null
-                    }
-                });
-
-                results.push({ productId, variance });
-
-                // 4. Financials (Record Variance Value)
-                if (variance !== 0) {
-                    const p = await tx.product.findUnique({ where: { id: productId } });
-                    if (p) {
-                        const cost = p.cost || 0;
-                        const varianceValue = Math.abs(variance * cost);
-
-                        // Accounts
-                        const inventoryAccount = await tx.accountingMapping.findUnique({
-                            where: { eventKey: 'INVENTORY_ASSET_DEFAULT' },
-                            include: { account: true }
-                        }).then(m => m?.account) || await tx.account.findUnique({ where: { code: '1200' } });
-
-                        // Shrinkage Logic: If negative variance, it's an Expense (Shrinkage).
-                        // If positive variance, it's basically "Found Inventory" (Income/Gain or reduce COGS). 
-                        // For now, let's map Positive Variance to "Inventory Adjustments" (6020) as a credit (gain) or debit (loss).
-                        // Usually 6020 is Expense.
-
-                        const adjustmentAccount = await tx.accountingMapping.findUnique({
-                            where: { eventKey: 'INVENTORY_ADJUSTMENT' },
-                            include: { account: true }
-                        }).then(m => m?.account) || await tx.account.findUnique({ where: { code: '6020' } }); // Shrinkage
-
-                        if (inventoryAccount && adjustmentAccount && varianceValue > 0) {
-                            const isLoss = variance < 0;
-
-                            await tx.journalEntry.create({
-                                data: {
-                                    description: `Stock Adjustment: ${p.name} (${variance > 0 ? '+' : ''}${variance} ${p.unit})`,
-                                    reference: `ADJ-${Date.now()}`,
-                                    date: new Date(),
-                                    lines: {
-                                        create: [
-                                            {
-                                                accountId: isLoss ? adjustmentAccount.id : inventoryAccount.id,
-                                                debit: varianceValue, // Loss = Debit Expense. Gain = Debit Inventory.
-                                                credit: 0
-                                            },
-                                            {
-                                                accountId: isLoss ? inventoryAccount.id : adjustmentAccount.id,
-                                                debit: 0,
-                                                credit: varianceValue // Loss = Credit Inventory. Gain = Credit Expense (Income).
-                                            }
-                                        ]
-                                    }
-                                }
-                            });
-                        }
-                    }
-                }
             }
 
-            return results;
+            if (stockCountItems.length === 0) return [];
+
+            const requestRecord = await tx.stockCountRequest.create({
+                data: {
+                    branchId,
+                    userId: userId || 'system',
+                    notes: notes || '',
+                    items: {
+                        create: stockCountItems
+                    }
+                }
+            });
+
+            return stockCountItems;
         });
 
         return NextResponse.json({ success: true, processed: result.length });

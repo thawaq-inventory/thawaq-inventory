@@ -56,6 +56,7 @@ model Branch {
   transfersFrom      TransferRequest[]      @relation("TransferFromBranch")
   transfersTo        TransferRequest[]      @relation("TransferToBranch")
   salesReports       SalesReport[]
+  stockCountRequests StockCountRequest[]
 }
 
 model User {
@@ -97,6 +98,8 @@ model User {
   
   // New Inventory Relations
   inventoryTransactions InventoryTransaction[]
+  stockCountsSubmitted StockCountRequest[] @relation("StockCountsSubmitted")
+  stockCountsReviewed  StockCountRequest[] @relation("StockCountsReviewed")
 }
 
 model Product {
@@ -146,6 +149,7 @@ model Product {
   inventoryLevels InventoryLevel[]
   inventoryTransactions InventoryTransaction[]
   transferItems TransferItem[]
+  stockCountItems StockCountItem[]
   
   // Recipe Mapping
   productMappings ProductMapping[]
@@ -836,4 +840,33 @@ model ChannelPricing {
   @@unique([posString, channel])
   @@index([channel])
   @@index([posString])
+}
+
+// Mobile App Stock Count Review
+model StockCountRequest {
+  id              String   @id @default(uuid())
+  branchId        String
+  branch          Branch   @relation(fields: [branchId], references: [id])
+  userId          String
+  user            User     @relation("StockCountsSubmitted", fields: [userId], references: [id])
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  reviewedById    String?
+  reviewedBy      User?    @relation("StockCountsReviewed", fields: [reviewedById], references: [id])
+  reviewedAt      DateTime?
+  
+  items           StockCountItem[]
+}
+
+model StockCountItem {
+  id              String   @id @default(uuid())
+  requestId       String
+  request         StockCountRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  systemQuantity  Float
+  countedQuantity Float
+  variance        Float
 }

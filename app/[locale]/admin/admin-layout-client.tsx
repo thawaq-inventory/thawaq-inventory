@@ -47,6 +47,7 @@ export function AdminLayoutClient({
     const router = useRouter();
     const pathname = usePathname();
     const [inventoryOpen, setInventoryOpen] = useState(pathname?.includes('/inventory'));
+    const [salesOpen, setSalesOpen] = useState(pathname?.includes('/sales'));
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userName, setUserName] = useState<string>('');
     const [userInitials, setUserInitials] = useState<string>('AD');
@@ -186,6 +187,33 @@ export function AdminLayoutClient({
                             Par Levels
                         </NavLink>
 
+                        {/* Sales Submenu */}
+                        <button
+                            onClick={() => setSalesOpen(!salesOpen)}
+                            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-md transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <DollarSign className="w-5 h-5" />
+                                {t('sales')}
+                            </div>
+                            {salesOpen ? (
+                                <ChevronDown className="w-4 h-4" />
+                            ) : (
+                                <ChevronRight className="w-4 h-4" />
+                            )}
+                        </button>
+
+                        {salesOpen && (
+                            <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-200 pl-2">
+                                <NavLink href="/admin/sales/history" icon={History}>
+                                    Sales History
+                                </NavLink>
+                                <NavLink href="/admin/sales/import" icon={ArrowLeftRight}>
+                                    Import & Mapping
+                                </NavLink>
+                            </div>
+                        )}
+
                         {/* Inventory Submenu */}
                         <button
                             onClick={() => setInventoryOpen(!inventoryOpen)}
@@ -210,11 +238,8 @@ export function AdminLayoutClient({
                                 <NavLink href="/admin/products" icon={ClipboardList}>
                                     {t('products')}
                                 </NavLink>
-                                <NavLink href="/admin/inventory/history" icon={History}>
-                                    Sales History
-                                </NavLink>
-                                <NavLink href="/admin/inventory/import" icon={ArrowLeftRight}>
-                                    Import & Mapping
+                                <NavLink href="/admin/inventory/requests" icon={ClipboardList}>
+                                    Stock Counts Review
                                 </NavLink>
                                 <NavLink href="/admin/inventory/transfers" icon={ArrowLeftRight}>
                                     Stock Transfers

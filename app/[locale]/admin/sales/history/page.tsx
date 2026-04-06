@@ -83,7 +83,7 @@ export default function SalesHistoryPage() {
                                     <TableRow
                                         key={report.id}
                                         className="cursor-pointer hover:bg-slate-50"
-                                        onClick={() => router.push(`/admin/inventory/history/${report.id}`)}
+                                        onClick={() => router.push(`/admin/sales/history/${report.id}`)}
                                     >
                                         <TableCell className="font-medium text-slate-900">
                                             {format(new Date(report.uploadDate), 'MMM dd, HH:mm')}
