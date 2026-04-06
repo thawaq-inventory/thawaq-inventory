@@ -98,18 +98,21 @@ export default function StockCountPage() {
         try {
             const updates = Object.values(changes).filter(c => c.isCounted && c.newStock !== c.originalStock);
 
-            await Promise.all(updates.map(update =>
-                fetch('/api/inventory/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        productId: update.productId,
-                        changeAmount: update.newStock - update.originalStock,
-                        reason: 'ADJUSTMENT',
-                        userId: null,
-                    }),
-                })
-            ));
+            const payloadItems = updates.map(update => ({
+                productId: update.productId,
+                actualQuantity: update.newStock
+            }));
+
+            const response = await fetch('/api/inventory/reconcile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: payloadItems,
+                    notes: 'Employee App Submission'
+                }),
+            });
+
+            if (!response.ok) throw new Error('Submission failed');
 
             setChanges({});
             fetchProducts(searchQuery);

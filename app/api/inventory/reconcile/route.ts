@@ -4,7 +4,22 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { branchId, items, notes, userId } = body;
+        let { branchId, items, notes, userId } = body;
+
+        // If no branchId provided, try to infer from cookie (standard for Employee App Context)
+        if (!branchId) {
+            const { cookies } = await import('next/headers');
+            const cookieStore = await cookies();
+            const selectedBranchesCookie = cookieStore.get('selectedBranches');
+            if (selectedBranchesCookie) {
+                try {
+                    const branches = JSON.parse(decodeURIComponent(selectedBranchesCookie.value));
+                    if (branches && branches.length > 0 && branches[0] !== 'all') {
+                        branchId = branches[0];
+                    }
+                } catch (e) {}
+            }
+        }
 
         if (!branchId || !items || !Array.isArray(items)) {
             return NextResponse.json(
