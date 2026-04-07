@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseUpload } from '@/lib/parsers/file-parser';
 import { parseSalesReportLine, parseTabSenseItems, ParsedItem } from '@/lib/parsers/sales-report-parser';
-import { parseTalabatItems, TalabatItem } from '@/lib/parsers/talabat-parser';
+import { parseTalabatItems } from '@/lib/parsers/talabat-parser';
 
 // --- FINANCIAL CONSTANTS (FALLBACKS) ---
 // These will be overridden by DB settings if available
@@ -121,8 +121,7 @@ export async function POST(req: NextRequest) {
             } else if (row.order_items) {
                 let items: ParsedItem[] = [];
                 if (channel === 'TALABAT') {
-                    const tItems = parseTalabatItems(String(row.order_items));
-                    items = tItems.map(ti => ({ name: ti.name, qty: ti.qty, modifiers: [] }));
+                    items = parseTalabatItems(String(row.order_items));
                 } else {
                     items = parseSalesReportLine(String(row.order_items));
                 }
@@ -209,12 +208,7 @@ export async function POST(req: NextRequest) {
             // Channel-specific parsing logic
             if (channel === 'TALABAT') {
                 if (row.order_items) {
-                    const talabatItems = parseTalabatItems(String(row.order_items));
-                    rowItems = talabatItems.map(ti => ({
-                        name: ti.name,
-                        qty: ti.qty,
-                        modifiers: []
-                    }));
+                    rowItems = parseTalabatItems(String(row.order_items));
                 }
             } else {
                 if (row.items_breakdown) {
