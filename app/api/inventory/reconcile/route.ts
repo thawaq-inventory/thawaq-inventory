@@ -57,6 +57,16 @@ export async function POST(request: NextRequest) {
 
                 if (!productId || actualQuantity === undefined) continue;
 
+                // Get Product to find conversionFactor
+                const product = await tx.product.findUnique({
+                    where: { id: productId },
+                    select: { conversionFactor: true }
+                });
+                const factor = product?.conversionFactor || 1;
+                
+                // Convert counted packs to base units
+                const convertedQuantity = actualQuantity * factor;
+
                 // 1. Get current stock level
                 const currentLevel = await tx.inventoryLevel.findUnique({
                     where: {
@@ -68,22 +78,26 @@ export async function POST(request: NextRequest) {
                 });
 
                 const systemQuantity = currentLevel ? currentLevel.quantityOnHand : 0;
-                const variance = actualQuantity - systemQuantity;
+                const variance = convertedQuantity - systemQuantity;
 
                 stockCountItems.push({
                     productId,
                     systemQuantity,
-                    countedQuantity: actualQuantity,
+                    countedQuantity: convertedQuantity,
                     variance
                 });
             }
 
-            if (stockCountItems.length === 0) return [];
+            if (stockCountItems.length === 0) return { count: 0, requestId: null };
 
+            // ✅ PENDING ONLY: Creates the review request for admin approval.
+            // ❌ NO InventoryLevel is updated here — zero ledger impact on submission.
+            // ✅ Actual stock update ONLY happens when Admin clicks 'Approve' in the dashboard.
             const requestRecord = await tx.stockCountRequest.create({
                 data: {
                     branchId,
                     userId: userId,
+                    status: 'PENDING', // Explicit — never rely on schema default for critical flows
                     notes: notes || '',
                     items: {
                         create: stockCountItems
@@ -91,10 +105,15 @@ export async function POST(request: NextRequest) {
                 }
             });
 
-            return stockCountItems;
+            return { count: stockCountItems.length, requestId: requestRecord.id };
         });
 
-        return NextResponse.json({ success: true, processed: result.length });
+        return NextResponse.json({
+            success: true,
+            processed: result.count,
+            requestId: result.requestId,
+            message: 'Submitted for admin review. Inventory will only update after approval.'
+        });
 
     } catch (error) {
         console.error('Stock Reconciliation Error:', error);

@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
         // But for Global products, we MUST have a branchId from context.
         const product = await prisma.product.findUnique({
             where: { id: productId },
-            select: { id: true, branchId: true, name: true }
+            select: { id: true, branchId: true, name: true, conversionFactor: true }
         });
 
         if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Branch Context missing. Please select a location.' }, { status: 400 });
         }
 
+        const factor = product.conversionFactor || 1;
+        const finalChangeAmount = changeAmount * factor;
+
         // Transaction: Update InventoryLevel + Create Log
         // Note: We use upsert for InventoryLevel because it might not exist yet (if auto-seed skipped or new branch)
 
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
                 }
             });
 
-            const newQuantity = (currentLevel?.quantityOnHand || 0) + changeAmount;
+            const newQuantity = (currentLevel?.quantityOnHand || 0) + finalChangeAmount;
 
             await tx.inventoryLevel.upsert({
                 where: {
@@ -63,11 +66,11 @@ export async function POST(request: NextRequest) {
                 create: {
                     productId,
                     branchId,
-                    quantityOnHand: changeAmount, // If creating new, assuming started at 0
+                    quantityOnHand: finalChangeAmount, // If creating new, assuming started at 0
                     reorderPoint: 0
                 },
                 update: {
-                    quantityOnHand: { increment: changeAmount }
+                    quantityOnHand: { increment: finalChangeAmount }
                 }
             });
 
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
                 data: {
                     productId,
                     branchId,
-                    changeAmount,
+                    changeAmount: finalChangeAmount,
                     reason: reason || 'ADJUSTMENT',
                     userId: userId || null // userId might be null if just a quick adjustment? 
                     // Ideally we should have userId. Client often sends it.
@@ -88,7 +91,7 @@ export async function POST(request: NextRequest) {
             if (product.branchId === branchId) {
                 await tx.product.update({
                     where: { id: productId },
-                    data: { stockLevel: { increment: changeAmount } }
+                    data: { stockLevel: { increment: finalChangeAmount } }
                 });
             }
         });

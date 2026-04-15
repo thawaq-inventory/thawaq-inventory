@@ -23,12 +23,15 @@ export async function POST(request: NextRequest) {
 
         // Execute in transaction
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Get Product Cost for Valuation
+            // 1. Get Product Cost and Conversion Factor for Valuation
             const product = await tx.product.findUnique({
                 where: { id: productId }
             });
+            const factor = product?.conversionFactor || 1;
+            const finalQty = qty * factor;
+            
             const cost = product?.cost || 0;
-            const totalValue = cost * qty;
+            const totalValue = cost * finalQty;
 
             // 2. Update Inventory (Deduct)
             await tx.inventoryLevel.upsert({
@@ -39,12 +42,12 @@ export async function POST(request: NextRequest) {
                     }
                 },
                 update: {
-                    quantityOnHand: { decrement: qty }
+                    quantityOnHand: { decrement: finalQty }
                 },
                 create: {
                     productId,
                     branchId,
-                    quantityOnHand: -qty // Allow negative if stock tracking was missing
+                    quantityOnHand: -finalQty // Allow negative if stock tracking was missing
                 }
             });
 
@@ -54,9 +57,9 @@ export async function POST(request: NextRequest) {
                     type: 'WASTE',
                     productId,
                     sourceBranchId: branchId, // Source is where waste happened
-                    quantity: qty,
+                    quantity: finalQty,
                     userId: userId || 'system',
-                    notes: `Reason: ${reason}. ${notes || ''}`
+                    notes: `Reason: ${reason}. Original Count: ${qty} packs/units. ${notes || ''}`
                 }
             });
 
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
                 data: {
                     productId,
                     branchId,
-                    changeAmount: -qty,
+                    changeAmount: -finalQty,
                     reason: 'WASTE',
                     userId: userId || null
                 }

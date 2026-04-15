@@ -13,24 +13,16 @@ export default function StockCountRequestsPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Read branchIds from localStorage
-        let userBranchId = 'all';
-        try {
-            const saved = localStorage.getItem('selectedBranches');
-            if (saved) {
-                const branches = JSON.parse(saved);
-                userBranchId = branches.join(',');
-            }
-        } catch(e) {}
-        fetchRequests(userBranchId);
+        // Fetch all pending requests regardless of local branch selection
+        fetchRequests();
     }, []);
 
-    const fetchRequests = async (userBranchId: string) => {
+    const fetchRequests = async () => {
         setLoading(true);
         setError(null);
         try {
-            const branchIds = userBranchId || 'all';
-            const res = await fetch(`/api/inventory/requests?branchIds=${branchIds}`);
+            // Request all branches, prioritizing pending tasks
+            const res = await fetch(`/api/inventory/requests?branchIds=all&status=PENDING`);
             if (!res.ok) throw new Error('Failed to fetch requests');
             const data = await res.json();
             setRequests(data);

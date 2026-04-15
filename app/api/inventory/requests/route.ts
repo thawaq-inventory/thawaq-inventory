@@ -5,10 +5,14 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const branchIds = searchParams.get('branchIds');
+        const status = searchParams.get('status');
 
         const where: any = {};
         if (branchIds && branchIds !== 'all') {
             where.branchId = { in: branchIds.split(',') };
+        }
+        if (status) {
+            where.status = status;
         }
 
         const requests = await prisma.stockCountRequest.findMany({

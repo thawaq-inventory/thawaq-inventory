@@ -238,14 +238,21 @@ export default function AdminExpensesPage() {
                             )}
 
                             {/* Receipt Preview */}
-                            <div className="relative h-48 bg-slate-100 rounded-lg overflow-hidden">
-                                <Image
-                                    src={expense.photoUrl}
-                                    alt="Receipt"
-                                    fill
-                                    className="object-contain"
-                                />
-                            </div>
+                            {expense.photoUrl ? (
+                                <div className="relative h-48 bg-slate-100 rounded-lg overflow-hidden">
+                                    <Image
+                                        src={expense.photoUrl}
+                                        alt="Receipt"
+                                        fill
+                                        className="object-contain"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="relative h-48 bg-slate-100 rounded-lg overflow-hidden flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+                                    <Receipt className="w-8 h-8 text-slate-300 mb-2" />
+                                    <span className="text-sm font-medium text-slate-500">No Receipt Attached</span>
+                                </div>
+                            )}
 
                             <Button
                                 onClick={() => openExpense(expense)}
@@ -283,14 +290,21 @@ export default function AdminExpensesPage() {
                             {/* Receipt Photo */}
                             <div>
                                 <Label>Receipt Photo</Label>
-                                <div className="relative h-64 bg-slate-100 rounded-lg overflow-hidden mt-2">
-                                    <Image
-                                        src={selectedExpense.photoUrl}
-                                        alt="Receipt"
-                                        fill
-                                        className="object-contain"
-                                    />
-                                </div>
+                                {selectedExpense.photoUrl ? (
+                                    <div className="relative h-64 bg-slate-100 rounded-lg overflow-hidden mt-2">
+                                        <Image
+                                            src={selectedExpense.photoUrl}
+                                            alt="Receipt"
+                                            fill
+                                            className="object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="relative h-64 bg-slate-50 rounded-lg overflow-hidden mt-2 flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+                                        <Receipt className="w-10 h-10 text-slate-300 mb-3" />
+                                        <span className="text-sm font-medium text-slate-500">No receipt photo was uploaded with this expense claim.</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Amount & Tax */}
