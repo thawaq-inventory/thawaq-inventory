@@ -8,6 +8,7 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { use } from 'react';
+import Image from 'next/image';
 
 interface JournalEntry {
     id: string;
@@ -24,6 +25,10 @@ interface JournalEntry {
             type: string;
         };
     }[];
+    expense?: {
+        id: string;
+        photoUrl: string | null;
+    } | null;
 }
 
 export default function JournalEntryDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -143,6 +148,31 @@ export default function JournalEntryDetailsPage({ params }: { params: Promise<{ 
                     </Table>
                 </CardContent>
             </Card>
+
+            {entry.expense?.photoUrl && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Attachment</CardTitle>
+                        <CardDescription>Receipt or document attached to the expense claim.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <a 
+                            href={entry.expense.photoUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="block w-full max-w-md h-96 border rounded-lg overflow-hidden relative bg-slate-50 hover:opacity-90 transition-opacity"
+                        >
+                            <Image 
+                                src={entry.expense.photoUrl} 
+                                alt="Expense Attachment" 
+                                fill 
+                                className="object-contain"
+                                unoptimized={entry.expense.photoUrl.endsWith('.svg')}
+                            />
+                        </a>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

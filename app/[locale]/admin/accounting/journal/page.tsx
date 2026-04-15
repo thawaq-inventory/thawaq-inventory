@@ -197,13 +197,7 @@ export default function JournalEntriesPage() {
     };
 
     const handleRowClick = (entry: JournalEntry) => {
-        // Rule 1: Expense Claim
-        if (entry.expense?.id) {
-            router.push(`/admin/expenses/${entry.expense.id}`);
-            return;
-        }
-
-        // Rule 2: Sales Import (Pop-up)
+        // Rule 1: Sales Import (Pop-up)
         if (entry.description.includes('Sales Import')) {
             setSelectedSalesEntry(entry);
             setIsSalesModalOpen(true);
